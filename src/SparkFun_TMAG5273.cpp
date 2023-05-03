@@ -58,3 +58,21 @@ bool TMAG5273::begin(uint8_t sensorAddress, TwoWire &wirePort)
 }
 
 
+/* GET ADDRESS 
+	This function returns the address of the device once
+	called upon. This address can only be 0x22.
+*/
+uint8_t TMP117::getAddress()
+{
+	return _deviceAddress;
+}
+
+
+/* READ TEMPERATURE
+  - Enable temperature bit from T_CONFIG Register
+  - Read temperature back
+*/
+float TMAG5273::readTemperature(void)
+{
+    
+}

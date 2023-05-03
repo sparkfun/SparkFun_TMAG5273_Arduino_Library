@@ -17,3 +17,37 @@ local, and you've found our code helpful, please buy us a round!
 Distributed as-is; no warranty is given.
 ******************************************************************************/
 
+#ifndef __SparkFun_TMAG5273_H__
+#define __SparkFun_TMAG5273_H__
+
+#include <Wire.h>
+#include <Arduino.h>
+#include "SparkFun_TMAG5273_Registers.h"
+
+#define DEVICE_ID_VALUE 0x22    // Value found in the device ID register
+
+
+class TMAG5273
+{
+public: 
+    TMAG5273(); // Constructor
+
+    bool begin(uint8_t sensorAddress = 0x48, TwoWire &wirePort = Wire); // Checks for ACK over I2C, and sets the device ID of the TMAG and chooses the wire port
+    uint8_t getAddress();                                               // Returns the address of the device 
+
+    float readTemperature(void);                                        // Returns temperature of device
+    uint8_t readMagField(float* Bx, float* By, float* Bz);              // Returns the magnetic field of the device - precise up to +/-1mT
+
+
+
+
+private: 
+    TwoWire *_i2cPort = NULL;
+    uint8_t _deviceAddress;
+    
+    uint16_t readRegister(uint8_t reg);             // Reads 2 register bytes from sensor
+    void writeRegister(uint8_t reg, uint16_t data); // Wires single byte of data to the sensor
+
+}
+
+#endif
