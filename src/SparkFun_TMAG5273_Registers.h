@@ -6,7 +6,8 @@ Original Creation Date: May 1st, 2023
 https://github.com/sparkfun/SparkFun_TMAG5273_Arduino_Library
 
 This file implements all functions of the TMAG5273. Functions here range
-from ________
+from reading the X, Y,and Z Magnetic Fields, to reading and writing various
+settings in the sensor.
 
 Development environment specifics:
 	IDE: Arduino 1.8.9
@@ -16,6 +17,16 @@ This code is beerware; if you see me (or any other SparkFun employee) at the
 local, and you've found our code helpful, please buy us a round!
 Distributed as-is; no warranty is given.
 ******************************************************************************/
+
+/*
+Features as per datasheet
+    - ±40mT on the X, Y linear magnetic range
+        - 820 LSB/mT Sensitivity
+    - ±80mT on the Z linear magnetic range
+        - 410 LSB/mT Sensitivity
+    - ±300 µT Offset
+        - ±3 µT Offset Drift 
+*/
 
 #ifndef __SparkFun_TMAG5273_Registers_H__
 #define __SparkFun_TMAG5273_Registers_H__
