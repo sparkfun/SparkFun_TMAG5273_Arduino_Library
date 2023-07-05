@@ -42,7 +42,6 @@ class TMAG5273
     int8_t begin(uint8_t sensorAddress = 0x48,
                  TwoWire &wirePort =
                      Wire); // Checks for ACK over I2C, and sets the device ID of the TMAG and chooses the wire port
-    uint8_t getAddress();   // Returns the address of the device
 
     uint8_t readMagField(float *Bx, float *By,
                          float *Bz); // Returns the magnetic field of the device - precise up to +/-1mT
@@ -58,8 +57,8 @@ class TMAG5273
     int8_t setGlitchFilter(uint8_t glitchMode); // Selects I2C filter on or off
     int8_t setTriggerMode(uint8_t trigMode);    // Sets condition that initiates a single conversion command
     int8_t setOperatingMode(uint8_t opMode);    // Selects operating mode and updates values based on operating mode
-    int8_t setMagChannel(uint16_t channelMode); // Sets the data acquisition from magnetic axis channels
-    int8_t setSleeptime(uint16_t sleepTime);    // Sets the time spent in low power mode between conversions
+    int8_t setMagChannel(uint8_t channelMode); // Sets the data acquisition from magnetic axis channels
+    int8_t setSleeptime(uint8_t sleepTime);    // Sets the time spent in low power mode between conversions
     int8_t setMagDir(uint8_t threshDir);        // Sets the direction of threshold check
     int8_t setMagGain(uint8_t gainAdjust);      // Sets the axis for magnitude gain correction value
     int8_t setAngleEN(uint8_t angleEnable);     // Sets the angle caluclation, mag gain, and offset corections
@@ -68,7 +67,7 @@ class TMAG5273
     int8_t setXThresh(uint32_t xThresh);        // Sets the X axis threshold code for limit check
     int8_t setYThresh(uint32_t yThresh);        // Sets the Y axis threshold code for limit check
     int8_t setZThresh(uint32_t zThresh);        // Sets the Z axis threshold code for limit check
-    int8_t setTempThresh(uint32_t tempThresh);  // Sets the Temperature threshold code for limit check
+    int8_t setTempThresh(int16_t tempThresh);  // Sets the Temperature threshold code for limit check
     int8_t setTempEN(
         bool temperatureEnable); // Sets the enable bit that determines the data acquisition of the temp channel
     int8_t setIntRslt(bool temperatureEnable); // Sets the enable interrupt response bit on conversion complete
@@ -83,38 +82,38 @@ class TMAG5273
     int8_t setOscillatorError(bool oscError); // Clear the Oscillator Error pin accordingly
 
     // Get Device Configuration Register Settings
-    uint16_t getCRCMode();       // Returns the I2C CRC byte to be sent
-    uint16_t getMagTemp();       // Returns the temperature coefficient of the magnet
-    uint16_t getConvAvg();       // Returns the average sampling rate of the sensor data
-    uint16_t getIntThreshold();  // Returns the threshold for the interrupt function
-    uint16_t getLowPower();      // Returns if the device is operating in low power or noise mode
-    uint16_t getGlitchFiler();   // Returns I2C glitch filter on or off
-    uint16_t getTriggerMode();   // Returns if trigger is set to I2C command or INT pin
-    uint16_t getOperatingMode(); // Returns the operating mode from 1 of the 4 modes.
-    uint16_t getMagChannel();    // Returns data acquisiton from the list of mag axis channels
-    uint16_t getSleeptime();     // Returns the time spent in low power mode
-    uint16_t getMagDir();        // Returns the direction of threshold check
-    uint16_t getMagGain();       // Returns the axis for magnitude gain correction value
-    uint16_t getAngleEn();       // Returns the angle calculation and associated channel order
-    uint16_t getXYAxisRange();   // Returns the X and Y axes magnetic range
-    uint16_t getZAxisRange();    // Returns the Z axis magnetic range
-    uint16_t getXThresh();       // Returns the X axis threshold code for limit check
-    uint16_t getYThresh();       // Returns the Y axis threshold code for limit check
-    uint16_t getZThresh();       // Returns the Z axis threshold code for limit check
-    uint16_t getTempThresh();    // Returns the temperature threshold code entered by the user
-    uint16_t getTempEN();        // Returns the enable bit to determine if temp channel is on or off
-    uint16_t getIntRslt();       // Returns the enable interrupt response bit on conversion complete.
-    uint16_t getThreshEn();      // Returns the bit that enables the interrupt
-    uint16_t getIntState();      // Returns the !INT interrupt if latched or pulsed
-    uint16_t getIntMode();       // Returns the configuration for the interrupt mode select
-    uint16_t getMaskInt();       // Returns the Mask !INT pin when !INT is connected to GND
-    uint16_t getSetCount();      // Returns the rolling count of conversion data sets
-    uint16_t getPOR();           // Returns if the device is poweres up or expereinced POR
-    uint16_t getDiagStatus();    // Returns if there was a detection of any internal diagnostics fail
-    uint16_t getResultStatus();  // Returns the conversion data buffer status (Data complete or not)
+    uint8_t getCRCMode();       // Returns the I2C CRC byte to be sent
+    uint8_t getMagTemp();       // Returns the temperature coefficient of the magnet
+    uint8_t getConvAvg();       // Returns the average sampling rate of the sensor data
+    uint8_t getIntThreshold();  // Returns the threshold for the interrupt function
+    uint8_t getLowPower();      // Returns if the device is operating in low power or noise mode
+    uint8_t getGlitchFiler();   // Returns I2C glitch filter on or off
+    uint8_t getTriggerMode();   // Returns if trigger is set to I2C command or INT pin
+    uint8_t getOperatingMode(); // Returns the operating mode from 1 of the 4 modes.
+    uint8_t getMagChannel();    // Returns data acquisiton from the list of mag axis channels
+    uint8_t getSleeptime();     // Returns the time spent in low power mode
+    uint8_t getMagDir();        // Returns the direction of threshold check
+    uint8_t getMagGain();       // Returns the axis for magnitude gain correction value
+    uint8_t getAngleEn();       // Returns the angle calculation and associated channel order
+    uint8_t getXYAxisRange();   // Returns the X and Y axes magnetic range
+    uint8_t getZAxisRange();    // Returns the Z axis magnetic range
+    float getXThresh();         // Returns the X axis threshold code for limit check
+    float getYThresh();         // Returns the Y axis threshold code for limit check
+    float getZThresh();         // Returns the Z axis threshold code for limit check
+    uint8_t getTempThresh();    // Returns the temperature threshold code entered by the user
+    uint8_t getTempEN();        // Returns the enable bit to determine if temp channel is on or off
+    uint8_t getIntRslt();       // Returns the enable interrupt response bit on conversion complete.
+    uint8_t getThreshEn();      // Returns the bit that enables the interrupt
+    uint8_t getIntState();      // Returns the !INT interrupt if latched or pulsed
+    uint8_t getIntMode();       // Returns the configuration for the interrupt mode select
+    uint8_t getMaskInt();       // Returns the Mask !INT pin when !INT is connected to GND
+    uint8_t getSetCount();      // Returns the rolling count of conversion data sets
+    uint8_t getPOR();           // Returns if the device is poweres up or expereinced POR
+    uint8_t getDiagStatus();    // Returns if there was a detection of any internal diagnostics fail
+    uint8_t getResultStatus();  // Returns the conversion data buffer status (Data complete or not)
 
-    uint16_t getI2CAddress();     // Returns the I2C address of the device
-    uint16_t getDeviceID();       // Returns the device version indicator
+    uint8_t getI2CAddress();      // Returns the I2C address of the device
+    uint8_t getDeviceID();        // Returns the device version indicator
     uint16_t getManufacturerID(); // Returns the manufacturer ID
 
     float getTemp();            // Uses T_MSB_RESULT and T_LSB_RESULT Registers
@@ -124,23 +123,28 @@ class TMAG5273
     float getAngleResult();     // Uses ANGLE_RESULT_LSB and ANGLE_RESULT_MSB Registesr
     float getMagnitudeResult(); // Uses the MAGNITUDE_RESULT Register
 
-    uint16_t getInterruptPinStatus(); // Returns the interrupt pin status
-    uint16_t getOscillatorError();    // Returns the Oscillator Error Status
-    uint16_t getIntPinError();        // Returns the Interrupt Pin Status
-    uint16_t getOtpCrcError();        // Returns the OTP CRC Error Status
-    uint16_t getUndervoltageError();  // Returns the undervoltage error status
+    uint8_t getInterruptPinStatus(); // Returns the interrupt pin status
+    uint8_t getOscillatorError();    // Returns the Oscillator Error Status
+    uint8_t getIntPinError();        // Returns the Interrupt Pin Status
+    uint8_t getOtpCrcError();        // Returns the OTP CRC Error Status
+    uint8_t getUndervoltageError();  // Returns the undervoltage error status
 
-    uint16_t getDeviceStatus(); // Returns the error detected
+    uint8_t getDeviceStatus(); // Returns the error detected
 
     int8_t getError(); // Returns an error code (0 is success, negative is failure, positive is warning)
+
+    uint16_t testPrint(); // Remove once done debugging
+    uint16_t getXLSB();
+    uint8_t getXMSB();
 
   private:
     // I2C Communication interface settings
     TwoWire *_i2cPort = NULL;
     uint8_t _deviceAddress;
 
-    uint16_t readRegister(uint8_t reg);             // Reads 2 register bytes from sensor
-    void writeRegister(uint8_t reg, uint16_t data); // Wires single byte of data to the sensor
+    uint8_t readRegister(uint8_t reg);             // Reads 2 register bytes from sensor
+    uint8_t writeRegister(uint8_t reg, uint8_t data); // Wires single byte of data to the sensor
+    bool ping(uint8_t i2c_address); // Checks for device presence
 
     void configI2C_RD(uint8_t read_mode);
 };

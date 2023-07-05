@@ -9,78 +9,35 @@ void setup()
   // Start serial communication at 115200 baud
   Serial.begin(115200);   
   // Set clock speed to be the fastest for better communication 
-  Wire.setClock(400000);  
+  Wire.setClock(1000000);  
+
   
   // Begin example of the magnetic sensor code (and add whitespace for easy reading)
   Serial.println("TMAG5273 Example 1: Basic Readings");
   Serial.println("");
   // If begin is successful (0), then start example
-  if(sensor.begin(0X0D, Wire) == false)
+  if(sensor.begin(0X22, Wire) == false)
   {
     Serial.println("Begin");
   }
   else // Otherwise, infinite loop
   {
     Serial.println("Device failed to setup - Freezing code.");
-    //while(1); // Runs forever
+    while(1); // Runs forever
   }
 
-  // Reset oscillator error flag
-  sensor.setOscillatorError(1);
+  // TESTING CODE: 
+  // Print out the I2C address
+  uint16_t address = sensor.getI2CAddress();
+  Serial.print("I2C Address: ");
+  Serial.println(address, HEX);
   
-  // Check device status register to make sure no errors are present
-  if(sensor.getDeviceStatus() == 1)
-  {
-    Serial.println("Oscillator Error");
-  }
-  else if(sensor.getDeviceStatus() == 2)
-  {
-    Serial.println("Interrupt Pin Error");
-  }
-  else if(sensor.getDeviceStatus() == 3)
-  {
-    Serial.println("OTP CRC Error");
-  }
-  else if(sensor.getDeviceStatus() == 4)
-  {
-    Serial.println("Undervoltage Error");
-  }
-
-  // Define I2C Read mode
-  sensor.setReadMode(0);
-  if(sensor.setReadMode(0) == 0)
-  {
-    Serial.println("Read Mode Set Successfully!");
-    delay(100);
-  }
-
-  // Set low active current mode
-  sensor.setLowPower(0);
-  if(sensor.setLowPower(0) == 0)
-  {
-    Serial.println("Low Active Current Set Successfully!");
-    delay(100);
-  }
-
-  // Set operating mode to continuous measure
-  sensor.setOperatingMode(2);
-  if(sensor.setOperatingMode(2) == 0)
-  {
-    Serial.println("Operating Mode Set Successfully!");
-    delay(100);
-  }
-
-  // Enable all magnetic channels (X, Y, Z)
-  int magCheck = 0;
-  magCheck = sensor.setMagChannel(7);
-  Serial.print("Mag Check: ");
-  Serial.println(magCheck);
+  sensor.setMagChannel(7);
   int magChannel = sensor.getMagChannel();
+  Serial.print("Magnetic Channel set: ");
   Serial.println(magChannel);
 
-  // Set the I2C Read Mode to be standard 3-byte command
-  sensor.setReadMode(0);
-
+  sensor.setXYAxisRange(1);
 
 }
 
@@ -88,19 +45,27 @@ void setup()
 
 void loop() 
 {
-  // Do we need dataReady? Do we have that option? --> Look into more
 
-
-  if((sensor.getMagChannel() != 0) || (sensor.getMagChannel() == -1)) // Checks if mag channels are on - turns on in setup
+  if(sensor.getMagChannel() != 0) // Checks if mag channels are on - turns on in setup
   {
     float magX = sensor.getXData();
     float magY = sensor.getYData();
     float magZ = sensor.getZData();
     float temp = sensor.getTemp();
-
+ 
+    int xyField = sensor.getXYAxisRange();
+    int xLSB = sensor.getXLSB();
+    int xMSB = sensor.getXMSB();
     Serial.println(); // Create a whitespace for easy viewing
-    Serial.print("Magnetic Field, X in mT: ");
-    Serial.println(magX);
+    Serial.print("Magnetic Field, X : ");
+    Serial.print(magX);
+    Serial.println("mT");
+    Serial.print("XY Axis Range: ");
+    Serial.println(xyField);
+    Serial.print("XLSB: ");
+    Serial.println(xLSB, BIN);
+    Serial.print("XMSB: ");
+    Serial.println(xMSB, BIN);
     //Serial.print("Magnetic Field, Y in mT: ");
     //Serial.println(magY);
     //Serial.print("Magnetic Field, Z in mT: ");
@@ -108,11 +73,12 @@ void loop()
     //Serial.print("Temperature in Celsius: ");
     //Serial.println(temp);
     delay(500); // Delay added for easier readings
-    
   }
   else
   {
     Serial.println("Mag Channels disabled, stopping..");
     while(1);
   }
+
+  delay(1000);
 }
