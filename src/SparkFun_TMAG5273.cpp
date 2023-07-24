@@ -200,10 +200,10 @@ int8_t TMAG5273::readWakeUpAndSleepData(float *xVal, float *yVal, float *zVal, f
     readRegisters(TMAG5273_T_MSB_RESULT, wakeupRegisterRead, 4);
 
     // Need to get the values to themselves (bitwise operation)
-    *zVal = wakeupRegisterRead[7];
-    *yVal= wakeupRegisterRead[5];
-    *xVal = wakeupRegisterRead[3];
-    *temperature= wakeupRegisterRead[1];
+    *zVal = (wakeupRegisterRead[6] << 8) & wakeupRegisterRead[7];
+    *yVal= (wakeupRegisterRead[4] << 8) & wakeupRegisterRead[5];
+    *xVal = (wakeupRegisterRead[2] << 8) & wakeupRegisterRead[3];
+    *temperature= (wakeupRegisterRead[0] << 8) & wakeupRegisterRead[1];
     
     // Reads to see if the range is set to 40mT or 80mT
     uint8_t rangeValXY = getXYAxisRange();
