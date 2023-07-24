@@ -15,9 +15,10 @@ void setup()
   Wire.setClock(1000000);
 
   // Begin example of the magnetic sensor code (and add whitespace for easy reading)
-  Serial.println("TMAG5273 Example 1: Basic Readings");
+  Serial.println("TMAG5273 Example 6: I2C Settings - Address Change");
   Serial.println("");
-  // If begin is successful (0), then start example
+  
+  // If begin is successful (1), then start example
   if(sensor.begin(i2cAddress, Wire) == true)
   {
     Serial.println("Begin");
@@ -25,38 +26,37 @@ void setup()
   else // Otherwise, infinite loop
   {
     Serial.println("Device failed to setup - Freezing code.");
+   
     while(1); // Runs forever
   }
+  
+  // Race Case
+  delay(1000);
 
-}
+  Serial.print("Original Address: ");
+  Serial.println(sensor.getI2CAddress(), HEX);
 
+  // Change I2C Address - can be any 7-bit value (bits 1-7)
+  int updatedAddress = 0x23;
 
-void loop() 
-{
-  // Checks if mag channels are on - turns on in setup
-  if(sensor.getMagneticChannel() != 0) 
+  // Set the I2C Address  
+  if(sensor.setI2CAddress(updatedAddress) != 0)
   {
-    float magX = sensor.getXData();
-    float magY = sensor.getYData();
-    float magZ = sensor.getZData();
-    float temp = sensor.getTemp();
-
-    Serial.print("(");
-    Serial.print(magX);
-    Serial.print(", ");
-    Serial.print(magY);
-    Serial.print(", ");
-    Serial.print(magZ);
-    Serial.println(") mT");
-    Serial.print(temp);
-    Serial.println(" C");
-  }
-  else
-  {
-    // If there is an issue, stop the magnetic readings and restart sensor/example
-    Serial.println("Mag Channels disabled, stopping..");
+    Serial.println("Address not set correctly!");
     while(1);
   }
+  
+}
 
-  delay(100);
+void loop()
+{
+  // Read current I2C address from the register after set
+  int newAddress = sensor.getI2CAddress();
+  Serial.print("I2C Address from Device: ");
+  Serial.println(newAddress, HEX);
+  Serial.println(); // White space for easy viewing
+
+  // Wait 1 second for next scan
+  delay(1000);           
+
 }

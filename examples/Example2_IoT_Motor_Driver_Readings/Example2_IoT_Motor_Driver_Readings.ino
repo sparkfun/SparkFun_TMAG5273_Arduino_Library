@@ -2,16 +2,22 @@
 #include "SparkFun_TMAG5273.h" // Used to send and recieve specific information from our sensor
 #include <SimpleFOC.h>
 
-TMAG5273 sensor; // Initialize hall-effect sensor
+/* For easy reading with this example, try opening the serial plotter! */
+
+// Initialize hall-effect sensor
+TMAG5273 sensor; 
+
+// I2C default address
+uint8_t i2cAddress = I2C_ADDRESS_INITIAL;
 
 // BLDC motor & driver instance
 BLDCMotor motor = BLDCMotor(8);
 
 // BLDCDriver6PWM(int phA_h,int phA_l,int phB_h,int phB_l,int phC_h,int phC_l, int en)
-BLDCDriver6PWM driver = BLDCDriver6PWM(16,17, 18,23, 19,33, 34); //, 32
+BLDCDriver6PWM driver = BLDCDriver6PWM(16,17, 18,23, 19,33, 34);
 
 //target variable
-float target_velocity = 5;
+float target_velocity = 3;
 
 // instantiate the commander
 Commander command = Commander(Serial);
@@ -59,34 +65,30 @@ int w_sense = 39;
 
 
 void setup() 
-{
+{  
   Wire.begin();
-  Serial.begin(115200);   // Start serial communication at 115200 baud
-  Wire.setClock(400000);  // Set clock speed to be the fastest for better communication 
+  // Start serial communication at 115200 baud
+  Serial.begin(115200);   
+  // Set clock speed to be the fastest for better communication
+  Wire.setClock(1000000);   
+
+  // Begin example of the magnetic sensor code
+  Serial.println("TMAG5273 Example 2: Basic Readings with the IoT Motor Driver");
 
   // ********* Driver config *********
   // power supply voltage [V]
   driver.voltage_power_supply = 3.3; // ESP32 3.3V supply pin
-
   // PWM Configuration
   driver.pwm_frequency = 20000;
   // this value is fixed on startup
   driver.voltage_limit = 4;
   driver.init();
-  
   // link the motor and the driver to enable usage
   motor.linkDriver(&driver);
-
   // limit the voltage to be set to the motor
   motor.voltage_limit = 4;   // [V]
-
-  // Set the deadzone - duty cycle that is reserved in between changing the active MOSFET
-  //driver.dead_zone(0.05); // This is injected when there is an activation/deactivation of the low/high side is used
- 
   // open loop control config
   motor.controller = MotionControlType::velocity_openloop;
-
-  Serial.print("Driver init check"); // delete once done debugging
   // init motor hardware
   motor.init();
  
@@ -108,51 +110,41 @@ void setup()
   pinMode(aux2.PIN, INPUT_PULLUP); // Sets pin 13 on the ESP32 as an interrupt
   attachInterrupt(aux2.PIN, isr2, FALLING); // Triggers when aux2 is pulled to GND (button pressed)
   
-  // Begin example of the magnetic sensor code
-  Serial.println("TMAG5273 Example 1: Basic Readings");
-  // If begin is successful (0), then start example
-  if(sensor.begin(0X0D, Wire) == false)
+
+  // If begin is successful (1), then start example
+  if(sensor.begin(i2cAddress, Wire) == true)
   {
     Serial.println("Begin");
   }
   else // Otherwise, infinite loop
   {
     Serial.println("Device failed to setup - Freezing code.");
-    //while(1); // Runs forever
+    while(1); // Runs forever
   }
 
-  Serial.println("blah");
-
-  int magCheck = 0;
-  // Enable all magnetic channels
-  magCheck = sensor.setMagChannel(7);
-  Serial.print("Mag Check: ");
-  Serial.println(magCheck);
-  int magChannel = sensor.getMagChannel();
-  Serial.println(magChannel);
-
-  // Set the I2C Read Mode to be standard 3-byte command
-  sensor.setReadMode(0);
-
-
+  // Delay for race case setup
+  delay(500);
 }
-
 
 
 void loop() 
 {
-
+  // Variable for temperature 
+  float temp = sensor.getTemp();
   // Button Press ISR
-  if(aux1.pressed){ // Change speed
-    Serial.printf("Button 1 has been pressed %u times\n", aux1.numberKeyPresses);
+  if(aux1.pressed)
+  { 
+    Serial.print("Temperature: ");
+    Serial.println(temp);
+    Serial.printf("Button 14 has been pressed %u times\n", aux1.numberKeyPresses);
     aux1.pressed = false;
+    delay(1000);
   }
-  
-  if(aux2.pressed){ // RGB LED Change
-    Serial.printf("Button 2 has been pressed %u times\n", aux2.numberKeyPresses);
+  if(aux2.pressed)
+  { 
+    Serial.printf("Button 13 has been pressed %u times\n", aux2.numberKeyPresses);
     aux2.pressed = false;
   }
-
 
   // Basic motor movement
   motor.move(target_velocity);
@@ -160,34 +152,25 @@ void loop()
   // user communication
   command.run();
 
-
-
   // Hall Effect Code
-  // Do we need dataReady? Do we have that option? --> Look into more
-
-
-  if((sensor.getMagChannel() != 0) || (sensor.getMagChannel() == -1)) // Checks if mag channels are on - turns on in setup
+  if(sensor.getMagneticChannel() != 0) // Checks if mag channels are on - turns on in begin()
   {
     float magX = sensor.getXData();
     float magY = sensor.getYData();
     float magZ = sensor.getZData();
-    float temp = sensor.getTemp();
 
-    Serial.println(); // Create a whitespace for easy viewing
-    Serial.print("Magnetic Field, X in mT: ");
-    Serial.println(magX);
-    Serial.print("Magnetic Field, Y in mT: ");
-    Serial.println(magY);
-    Serial.print("Magnetic Field, Z in mT: ");
-    Serial.println(magZ);
-    Serial.print("Temperature in Celsius: ");
-    Serial.println(temp);
-    delay(500); // Delay added for easier readings
-    
+    Serial.print("(");
+    Serial.print(magX);
+    Serial.print(", ");
+    Serial.print(magY);
+    Serial.print(", ");
+    Serial.print(magZ);
+    Serial.println(") mT");
   }
   else
   {
     Serial.println("Mag Channels disabled, stopping..");
     while(1);
   }
+
 }
