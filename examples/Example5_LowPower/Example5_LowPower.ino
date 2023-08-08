@@ -1,5 +1,5 @@
 #include <Wire.h>            // Used to establish serial communication on the I2C bus
-#include "SparkFun_TMAG5273.h" // Used to send and recieve specific information from our sensor
+#include "SparkFun_TMAG5273_Arduino_Library.h" // Used to send and recieve specific information from our sensor
 
 TMAG5273 sensor; // Initialize hall-effect sensor
 

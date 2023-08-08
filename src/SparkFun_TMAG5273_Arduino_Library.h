@@ -1,11 +1,11 @@
 /******************************************************************************
-SparkFunTMAG5273.cpp
+SparkFun_TMAG5273_Arduino_Library.h
 SparkFunTMAG5273 Library Source File
 Madison Chodikov @ SparkFun Electronics
 Original Creation Date: May 1st, 2023
 https://github.com/sparkfun/SparkFun_TMAG5273_Arduino_Library
 
-This file implements all functions of the TMAG5273. Functions here range
+This header file implements all functions of the TMAG5273. Functions here range
 from reading the X, Y,and Z Magnetic Fields, to reading and writing various
 settings in the sensor.
 
@@ -16,141 +16,135 @@ Development environment specifics:
 Distributed as-is; no warranty is given.
 ******************************************************************************/
 
-#ifndef __SparkFun_TMAG5273_H__
-#define __SparkFun_TMAG5273_H__
+#ifndef __SparkFun_TMAG5273_Arduino_Library_H__
+#define __SparkFun_TMAG5273_Arduino_Library_H__
 
-#include "SparkFun_TMAG5273_Registers.h"
+#include "SparkFun_TMAG5273_Arduino_Library_Registers.h"
 #include <Arduino.h>
 #include <Wire.h>
 
-#define DEVICE_ID_VALUE 0x5449   // Value found in the device ID register
-#define I2C_ADDRESS_INITIAL 0X22 // Initial I2C address value - can be changed using functions as seen below
-#define TSENSE_T0 25             // Reference temperature for TADC_T0
-#define TADC_T0 17508            // Temp result in decimal value (from 16-buit format)
-#define TADC_RES 60.1            // Temperature sensing resolution (in 16-bit format)
+#define TMAG5273_DEVICE_ID_VALUE 0x5449   // Value found in the device ID register
+#define TMAG5273_I2C_ADDRESS_INITIAL 0X22 // Initial I2C address value - can be changed using functions as seen below
+#define TMAG5273_TSENSE_T0 25             // Reference temperature for TADC_T0
+#define TMAG5273_TADC_T0 17508            // Temp result in decimal value (from 16-buit format)
+#define TMAG5273_TADC_RES 60.1            // Temperature sensing resolution (in 16-bit format)
 
-#define CRC_DISABLE 0X0 // Disables I2C CRC byte to be sent
-#define CRC_ENABLE 0X1  // Enable I2C CRC byte to be sent
+#define TMAG5273_CRC_DISABLE 0X0 // Disables I2C CRC byte to be sent
+#define TMAG5273_CRC_ENABLE 0X1  // Enable I2C CRC byte to be sent
 
-#define X1_CONVERSION 0X0  // 1X Average
-#define X2_CONVERSION 0X1  // 2X Average
-#define X4_CONVERSION 0X2  // 4X Average
-#define X8_CONVERSION 0X3  // 8X Average
-#define X16_CONVERSION 0X4 // 16X Average
-#define X32_CONVERSION 0X5 // 32X Average
+#define TMAG5273_X1_CONVERSION 0X0  // 1X Average
+#define TMAG5273_X2_CONVERSION 0X1  // 2X Average
+#define TMAG5273_X4_CONVERSION 0X2  // 4X Average
+#define TMAG5273_X8_CONVERSION 0X3  // 8X Average
+#define TMAG5273_X16_CONVERSION 0X4 // 16X Average
+#define TMAG5273_X32_CONVERSION 0X5 // 32X Average
 
-#define I2C_MODE_3BYTE 0X0       // Standard I2C 3-byte read command
-#define I2C_MODE_1BYTE_16BIT 0X1 // 1-byte I2C read command for 16bit sensor data and conversion status
-#define I2C_MODE_1BYTE_8BIT 0X2  // 1-byte I2C read command for 8 bit sensor MSB data and conversion status
+#define TMAG5273_I2C_MODE_3BYTE 0X0       // Standard I2C 3-byte read command
+#define TMAG5273_I2C_MODE_1BYTE_16BIT 0X1 // 1-byte I2C read command for 16bit sensor data and conversion status
+#define TMAG5273_I2C_MODE_1BYTE_8BIT 0X2  // 1-byte I2C read command for 8 bit sensor MSB data and conversion status
 
-#define LOW_ACTIVE_CURRENT_MODE 0X0 // Low active current mode
-#define LOW_NOISE_MODE 0X1          // Low noise mode
+#define TMAG5273_LOW_ACTIVE_CURRENT_MODE 0X0 // Low active current mode
+#define TMAG5273_LOW_NOISE_MODE 0X1          // Low noise mode
 
-#define GLITCH_ON 0X0  // Glitch filter on
-#define GLITCH_OFF 0X1 // Glitch filter off
+#define TMAG5273_GLITCH_ON 0X0  // Glitch filter on
+#define TMAG5273_GLITCH_OFF 0X1 // Glitch filter off
 
-#define STANDY_BY_MODE 0X0          // Stand-by mode
-#define SLEEP_MODE 0X1              // Sleep mode
-#define CONTINUOUS_MEASURE_MODE 0X2 // Continous measure mode
-#define WAKE_UP_AND_SLEEP_MODE 0X3  // Wake-up and sleep mode
+#define TMAG5273_STANDY_BY_MODE 0X0          // Stand-by mode
+#define TMAG5273_SLEEP_MODE 0X1              // Sleep mode
+#define TMAG5273_CONTINUOUS_MEASURE_MODE 0X2 // Continous measure mode
+#define TMAG5273_WAKE_UP_AND_SLEEP_MODE 0X3  // Wake-up and sleep mode
 
-#define CHANNELS_OFF 0X0     
-#define X_ENABLE 0X1     // X Channel enabled
-#define Y_ENABLE 0X2     // Y Channel enabled
-#define X_Y_ENABLE 0X3   // X, Y Channel enabled
-#define Z_ENABLE 0X4     // Z Channel enabled
-#define Z_X_ENABLE 0X5   // Z, X Channel enabled
-#define Y_Z_ENABLE 0X6   // Y, Z Channel enabled
-#define X_Y_Z_ENABLE 0X7 // X, Y, Z Channel enabled
-#define XYX_ENABLE 0X8   // XYX Channel enabled
-#define YXY_ENABLE 0X9   // YXY Channel enabled
-#define YZY_ENABLE 0XA   // YZY Channel enabled
-#define XZX_ENABLE 0XB   // XZX Channel enabled
+#define TMAG5273_CHANNELS_OFF 0X0 // Turn all the magnetic channels off
+#define TMAG5273_X_ENABLE 0X1     // X Channel enabled
+#define TMAG5273_Y_ENABLE 0X2     // Y Channel enabled
+#define TMAG5273_X_Y_ENABLE 0X3   // X, Y Channel enabled
+#define TMAG5273_Z_ENABLE 0X4     // Z Channel enabled
+#define TMAG5273_Z_X_ENABLE 0X5   // Z, X Channel enabled
+#define TMAG5273_Y_Z_ENABLE 0X6   // Y, Z Channel enabled
+#define TMAG5273_X_Y_Z_ENABLE 0X7 // X, Y, Z Channel enabled
+#define TMAG5273_XYX_ENABLE 0X8   // XYX Channel enabled
+#define TMAG5273_YXY_ENABLE 0X9   // YXY Channel enabled
+#define TMAG5273_YZY_ENABLE 0XA   // YZY Channel enabled
+#define TMAG5273_XZX_ENABLE 0XB   // XZX Channel enabled
 
-#define SLEEP_1MS 0X0     // 1ms
-#define SLEEP_5MS 0X1     // 5ms
-#define SLEEP_10MS 0X2    // 10 ms
-#define SLEEP_15MS 0X3    // 15ms
-#define SLEEP_20MS 0X4    // 20ms
-#define SLEEP_30MS 0X5    // 30ms
-#define SLEEP_50MS 0X6    // 50ms
-#define SLEEP_100MS 0X7   // 100ms
-#define SLEEP_500MS 0X8   // 500ms
-#define SLEEP_1000MS 0X9  // 1000ms
-#define SLEEP_2000MS 0XA  // 2000ms
-#define SLEEP_5000MS 0XB  // 5000ms
-#define SLEEP_20000MS 0XC // 20000ms
+#define TMAG5273_SLEEP_1MS 0X0     // 1ms
+#define TMAG5273_SLEEP_5MS 0X1     // 5ms
+#define TMAG5273_SLEEP_10MS 0X2    // 10 ms
+#define TMAG5273_SLEEP_15MS 0X3    // 15ms
+#define TMAG5273_SLEEP_20MS 0X4    // 20ms
+#define TMAG5273_SLEEP_30MS 0X5    // 30ms
+#define TMAG5273_SLEEP_50MS 0X6    // 50ms
+#define TMAG5273_SLEEP_100MS 0X7   // 100ms
+#define TMAG5273_SLEEP_500MS 0X8   // 500ms
+#define TMAG5273_SLEEP_1000MS 0X9  // 1000ms
+#define TMAG5273_SLEEP_2000MS 0XA  // 2000ms
+#define TMAG5273_SLEEP_5000MS 0XB  // 5000ms
+#define TMAG5273_SLEEP_20000MS 0XC // 20000ms
 
-#define THRESHOLD_1 0X0 // 1 Threshold crossing
-#define THRESHOLD_4 0X1 // 4 Threshold crossing
+#define TMAG5273_THRESHOLD_1 0X0 // 1 Threshold crossing
+#define TMAG5273_THRESHOLD_4 0X1 // 4 Threshold crossing
 
-#define THRESHOLD_INT_ABOVE 0X0 // Sets interrupt for field above the threshold
-#define THRESHOLD_INT_BELOW 0X1 // Sets interrupt for field below the threshold
+#define TMAG5273_THRESHOLD_INT_ABOVE 0X0 // Sets interrupt for field above the threshold
+#define TMAG5273_THRESHOLD_INT_BELOW 0X1 // Sets interrupt for field below the threshold
 
-#define GAIN_ADJUST_CHANNEL_1 0X0 // 1st channel is selected for gain adjustment
-#define GAIN_ADJUST_CHANNEL_2 0X1 // 2nd channel is selected for gain adjustment
+#define TMAG5273_GAIN_ADJUST_CHANNEL_1 0X0 // 1st channel is selected for gain adjustment
+#define TMAG5273_GAIN_ADJUST_CHANNEL_2 0X1 // 2nd channel is selected for gain adjustment
 
-#define NO_ANGLE_CALCULATION 0X0 // No angle calculation, magnetic gain, and offset correction enabled
-#define XY_ANGLE_CALCULATION 0X1 // X 1st, Y 2nd
-#define YZ_ANGLE_CALCULATION 0X2 // Y 1st, Z 2nd
-#define XZ_ANGLE_CALCULATION 0X3 // X 1st, Z 2nd
+#define TMAG5273_NO_ANGLE_CALCULATION 0X0 // No angle calculation, magnetic gain, and offset correction enabled
+#define TMAG5273_XY_ANGLE_CALCULATION 0X1 // X 1st, Y 2nd
+#define TMAG5273_YZ_ANGLE_CALCULATION 0X2 // Y 1st, Z 2nd
+#define TMAG5273_XZ_ANGLE_CALCULATION 0X3 // X 1st, Z 2nd
 
-#define RANGE_40MT 0X0 // +/-40mT, DEFAULT
-#define RANGE_80MT 0X1 // +/-80mT, DEFAULT
+#define TMAG5273_RANGE_40MT 0X0 // +/-40mT, DEFAULT
+#define TMAG5273_RANGE_80MT 0X1 // +/-80mT, DEFAULT
 
-#define TEMPERATURE_DISABLE 0X0 // Temperature channel disabled
-#define TEMPERATURE_ENABLE 0X1  // Temperature channel enabled
+#define TMAG5273_TEMPERATURE_DISABLE 0X0 // Temperature channel disabled
+#define TMAG5273_TEMPERATURE_ENABLE 0X1  // Temperature channel enabled
 
-#define INTERRUPT_NOT_ASSERTED 0X0 // Interrupt is not asserved when set
-#define INTERRUPT_ASSERTED 0X1     // Interrupt is asserted
+#define TMAG5273_INTERRUPT_NOT_ASSERTED 0X0 // Interrupt is not asserved when set
+#define TMAG5273_INTERRUPT_ASSERTED 0X1     // Interrupt is asserted
 
-#define NO_INTERRUPT 0X0              // No interrupt
-#define INTERRUPT_THROUGH_INT 0X1     // Interrupt thru INT
-#define INTERRUPT_THROUGH_INT_I2C 0X2 // Interrupt thru INT except when I2C bus is busy
-#define INTERRUPT_THROUGH_SCL 0X3     // Interrupt thru SCL
-#define INTERRUPT_THROUGH_SCL_I2C 0X4 // Interrupt thru SCL except when I2C bus is busy
+#define TMAG5273_NO_INTERRUPT 0X0              // No interrupt
+#define TMAG5273_INTERRUPT_THROUGH_INT 0X1     // Interrupt thru INT
+#define TMAG5273_INTERRUPT_THROUGH_INT_I2C 0X2 // Interrupt thru INT except when I2C bus is busy
+#define TMAG5273_INTERRUPT_THROUGH_SCL 0X3     // Interrupt thru SCL
+#define TMAG5273_INTERRUPT_THROUGH_SCL_I2C 0X4 // Interrupt thru SCL except when I2C bus is busy
 
-#define INTERRUPT_ENABLED 0X0  // Interrupt pin is enabled
-#define INTERRUPT_DISABLED 0X1 // Interrupt pin is disabled
+#define TMAG5273_INTERRUPT_ENABLED 0X0  // Interrupt pin is enabled
+#define TMAG5273_INTERRUPT_DISABLED 0X1 // Interrupt pin is disabled
 
-#define INT_PIN_ENABLE 0X0  // INT pin is enabled
-#define INT_PIN_DISABLE 0X1 // INT pin is disabled (for wake-up and trigger functions)
+#define TMAG5273_INT_PIN_ENABLE 0X0  // INT pin is enabled
+#define TMAG5273_INT_PIN_DISABLE 0X1 // INT pin is disabled (for wake-up and trigger functions)
 
-#define I2C_ADDRESS_CHANGE_DISABLE 0X0 // Disable update of I2C address
-#define I2C_ADDRESS_CHANGE_ENABLE 0X1  // Enable update of I2C address
+#define TMAG5273_I2C_ADDRESS_CHANGE_DISABLE 0X0 // Disable update of I2C address
+#define TMAG5273_I2C_ADDRESS_CHANGE_ENABLE 0X1  // Enable update of I2C address
 
-#define NO_POR 0X0  // Conversion data not complete
-#define YES_POR 0X1 // Conversion data complete
+#define TMAG5273_NO_POR 0X0  // Conversion data not complete
+#define TMAG5273_YES_POR 0X1 // Conversion data complete
 
-#define OSCILLATOR_ERROR_UNDETECTED 0X0 // No Oscillator error detected
-#define OSCILLATOR_ERROR_DETECTED 0X1   // Oscillator error detected
+#define TMAG5273_OSCILLATOR_ERROR_UNDETECTED 0X0 // No Oscillator error detected
+#define TMAG5273_OSCILLATOR_ERROR_DETECTED 0X1   // Oscillator error detected
 
-#define INT_ERROR_UNDETECTED 0X0 // No INT error detected
-#define INT_ERROR_DETECTED 0X1   // INT error detected
+#define TMAG5273_INT_ERROR_UNDETECTED 0X0 // No INT error detected
+#define TMAG5273_INT_ERROR_DETECTED 0X1   // INT error detected
 
-#define DEVICE_CONFIG_1_BEGIN 0X1  // Value to set the DEVICE_CONFIG_1 register to on startup
-#define SENSOR_CONFIG_1_BEGIN 0X79 // Value to set the SENSOR_CONFIG_1 register to on startup
-#define T_CONFIG_BEGIN 0X1         // Value to set the T_CONFIG register to on startup
-#define INT_CONFIG_1_BEGIN 0XA4    // Value to set the INT_CONFIG_1 register to on startup
-#define DEVICE_CONFIG_2_BEGIN 0X02 // Value to set the DEVICE_CONFIG_2 register to on startup
+#define TMAG5273_DEVICE_CONFIG_1_BEGIN 0X1  // Value to set the DEVICE_CONFIG_1 register to on startup
+#define TMAG5273_SENSOR_CONFIG_1_BEGIN 0X79 // Value to set the SENSOR_CONFIG_1 register to on startup
+#define TMAG5273_T_CONFIG_BEGIN 0X1         // Value to set the T_CONFIG register to on startup
+#define TMAG5273_INT_CONFIG_1_BEGIN 0XA4    // Value to set the INT_CONFIG_1 register to on startup
+#define TMAG5273_DEVICE_CONFIG_2_BEGIN 0X02 // Value to set the DEVICE_CONFIG_2 register to on startup
 
 #define TMAG_OK INT8_C(0) // To define success code
-
-struct TMAG5273_Interface
-{
-};
 
 class TMAG5273
 {
   public:
     TMAG5273(); // Constructor
 
-    // Return to PRIVATE after debugging
-    uint8_t _deviceAddress;
-
     int8_t begin(uint8_t sensorAddress = 0X22,
                  TwoWire &wirePort =
                      Wire); // Checks for ACK over I2C, and sets the device ID of the TMAG and chooses the wire port
+    int8_t isConnected();   // Checks for I2C address verification along with the device address
     int8_t setupWakeUpAndSleep(); // Sets the device to be in Wake Up and Sleep Mode
 
     int8_t readWakeUpAndSleepData(float *xVal, float *yVal, float *zVal,
@@ -240,21 +234,14 @@ class TMAG5273
     float getMagnitudeResult(); // Uses the MAGNITUDE_RESULT Register
 
     uint8_t getInterruptPinStatus(); // Returns the interrupt pin status
-    uint8_t getOscillatorError();    // Returns the Oscillator Error Status
-    uint8_t getIntPinError();        // Returns the Interrupt Pin Status
-    uint8_t getOtpCrcError();        // Returns the OTP CRC Error Status
-    uint8_t getUndervoltageError();  // Returns the undervoltage error status
 
     uint8_t getDeviceStatus(); // Returns the error detected
-
-    int8_t getError(); // Returns an error code (0 is success, negative is failure, positive is warning)
+    int8_t getError();         // Returns an error code (0 is success, negative is failure, positive is warning)
 
   private:
     // I2C Communication interface settings
     TwoWire *_i2cPort = NULL;
-
-    // uint8_t readRegister(uint8_t reg);                // Reads 2 register bytes from sensor
-    // uint8_t writeRegister(uint8_t reg, uint8_t data); // Wires single byte of data to the sensor
+    uint8_t _deviceAddress;
 
     int8_t writeRegisters(uint8_t regAddress, uint8_t *dataBuffer, uint8_t numBytes);
     int8_t readRegisters(uint8_t regAddress, uint8_t *dataBuffer, uint8_t numBytes);

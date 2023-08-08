@@ -1,5 +1,5 @@
 #include <Wire.h>            // Used to establish serial communication on the I2C bus
-#include "SparkFun_TMAG5273.h" // Used to send and recieve specific information from our sensor
+#include "SparkFun_TMAG5273_Arduino_Library.h" // Used to send and recieve specific information from our sensor
 #include <SimpleFOC.h>
 
 /* For easy reading with this example, try opening the serial plotter! */
@@ -8,7 +8,7 @@
 TMAG5273 sensor; 
 
 // I2C default address
-uint8_t i2cAddress = I2C_ADDRESS_INITIAL;
+uint8_t i2cAddress = TMAG5273_I2C_ADDRESS_INITIAL;
 
 // BLDC motor & driver instance
 BLDCMotor motor = BLDCMotor(8);
@@ -54,14 +54,6 @@ void IRAM_ATTR isr2(){
   aux2.numberKeyPresses++;
   aux2.pressed = true;
 }
-
-
-// Setup pins for current sense outputs
-int curr_sense = 32;
-int u_sense = 35;
-int v_sense = 36;
-int w_sense = 39;
-
 
 
 void setup() 
@@ -136,13 +128,12 @@ void loop()
   { 
     Serial.print("Temperature: ");
     Serial.println(temp);
-    Serial.printf("Button 14 has been pressed %u times\n", aux1.numberKeyPresses);
     aux1.pressed = false;
     delay(1000);
   }
   if(aux2.pressed)
   { 
-    Serial.printf("Button 13 has been pressed %u times\n", aux2.numberKeyPresses);
+    Serial.println("Changing direction.. ");
     aux2.pressed = false;
   }
 

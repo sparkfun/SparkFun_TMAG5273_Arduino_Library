@@ -1,11 +1,16 @@
 #include <Wire.h>            // Used to establish serial communication on the I2C bus
-#include "SparkFun_TMAG5273.h" // Used to send and recieve specific information from our sensor
+#include "SparkFun_TMAG5273_Arduino_Library.h" // Used to send and recieve specific information from our sensor
 
 // Create a new sensor object
 TMAG5273 sensor; 
 
 // I2C default address
-uint8_t i2cAddress = I2C_ADDRESS_INITIAL;
+uint8_t i2cAddress = TMAG5273_I2C_ADDRESS_INITIAL;
+
+// Set constants for setting up device
+uint8_t conversionAverage = TMAG5273_X32_CONVERSION;
+uint8_t magneticChannel = TMAG5273_XYX_ENABLE;
+uint8_t angleCalculation = TMAG5273_XY_ANGLE_CALCULATION;
 
 void setup() 
 {
@@ -30,15 +35,15 @@ void setup()
   }
 
   // Set the device at 32x average mode 
-  sensor.setConvAvg(X32_CONVERSION);
+  sensor.setConvAvg(conversionAverage);
 
   // Choose new angle to calculate from
   // Can calculate angles between XYX, YXY, YZY, and XZX
-  sensor.setMagneticChannel(XYX_ENABLE);
+  sensor.setMagneticChannel(magneticChannel);
 
   // Enable the angle calculation register
   // Can choose between XY, YZ, or XZ priority
-  sensor.setAngleEn(XY_ANGLE_CALCULATION);
+  sensor.setAngleEn(angleCalculation);
 
 }
 

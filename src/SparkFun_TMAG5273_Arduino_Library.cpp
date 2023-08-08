@@ -16,8 +16,8 @@ Development environment specifics:
 Distributed as-is; no warranty is given.
 ******************************************************************************/
 
-#include "SparkFun_TMAG5273.h"
-#include "SparkFun_TMAG5273_Registers.h"
+#include "SparkFun_TMAG5273_Arduino_Library.h"
+#include "SparkFun_TMAG5273_Arduino_Library_Registers.h"
 #include <Arduino.h>
 #include <Wire.h>
 
@@ -30,60 +30,59 @@ TMAG5273::TMAG5273()
 /// and set the wire for the I2C communication
 /// @param sensorAddress I2C address of the sensor
 /// @param wirePort I2C port to use for communication, defaults to Wire
-/// @return Error code (0 is success, negative is failure, positive is warning)
+/// @return Error code (1 is success, 0 is failure, negative is warning)
 int8_t TMAG5273::begin(uint8_t sensorAddress, TwoWire &wirePort)
 {
     _i2cPort = &wirePort;           // Chooses the wire port of the device
     _deviceAddress = sensorAddress; // Sets the address of the device
 
-    // make sure the TMP will acknowledge over I2C
-    _i2cPort->beginTransmission(_deviceAddress);
-    if (_i2cPort->endTransmission() != 0)
+    // Makes sure the TMAG will acknowledge over I2C along with matching Device ID's
+    if (isConnected() != 0)
     {
         return 0;
     }
 
     // Following the Detailed Design Prodedure on page 42 of the datasheet
-    writeRegister(TMAG5273_SENSOR_CONFIG_1, SENSOR_CONFIG_1_BEGIN);
-    writeRegister(TMAG5273_T_CONFIG, T_CONFIG_BEGIN);
-    writeRegister(TMAG5273_DEVICE_CONFIG_2, DEVICE_CONFIG_2_BEGIN);
+    setMagneticChannel(TMAG5273_X_Y_Z_ENABLE);
+    setTemperatureEn(true);
+    setOperatingMode(TMAG5273_CONTINUOUS_MEASURE_MODE);
 
     // Set the axis ranges for the device to be the largest
-    setXYAxisRange(RANGE_80MT);
-    setZAxisRange(RANGE_80MT);
+    setXYAxisRange(TMAG5273_RANGE_80MT);
+    setZAxisRange(TMAG5273_RANGE_80MT);
 
-    // Check if there is any issue with the device status
-    if (getDeviceStatus() != 0)
+    // Check if there is any issue with the device status register
+    if (getError() != 0)
     {
         return 0;
     }
 
     // Check the low active current mode (0)
-    if (getLowPower() != LOW_ACTIVE_CURRENT_MODE)
+    if (getLowPower() != TMAG5273_LOW_ACTIVE_CURRENT_MODE)
     {
         return 0;
     }
 
     // Check the operating mode to make sure it is set to continuous measure (0X2)
-    if (getOperatingMode() != CONTINUOUS_MEASURE_MODE)
+    if (getOperatingMode() != TMAG5273_CONTINUOUS_MEASURE_MODE)
     {
         return 0;
     }
 
     // Check that all magnetic channels have been enables(0X7)
-    if (getMagneticChannel() != X_Y_Z_ENABLE)
+    if (getMagneticChannel() != TMAG5273_X_Y_Z_ENABLE)
     {
         return 0;
     }
 
     // Check that the temperature data acquisition has been enabled
-    if (getTemperatureEN() != TEMPERATURE_ENABLE)
+    if (getTemperatureEN() != TMAG5273_TEMPERATURE_ENABLE)
     {
         return 0;
     }
 
     // Check that X and Y angle calculation is disabled
-    if (getAngleEn() != NO_ANGLE_CALCULATION)
+    if (getAngleEn() != TMAG5273_NO_ANGLE_CALCULATION)
     {
         return 0;
     }
@@ -92,16 +91,37 @@ int8_t TMAG5273::begin(uint8_t sensorAddress, TwoWire &wirePort)
     return 1;
 }
 
+/// @brief This function will make sure the TMAG5273 acknowledges
+///  over I2C, along with checking the Device ID to ensure proper
+///  connection.
+/// @return Error code (0 is success, negative is failure)
+int8_t TMAG5273::isConnected()
+{
+    // make sure the TMAG will acknowledge over I2C
+    _i2cPort->beginTransmission(_deviceAddress);
+    if (_i2cPort->endTransmission() != 0)
+    {
+        return -1;
+    }
+
+    if (getManufacturerID() != TMAG5273_DEVICE_ID_VALUE)
+    {
+        return -1;
+    }
+
+    return 0;
+}
+
 /// @brief Reads the register bytes from the sensor when called upon. This reads
 /// 2 bytes of information from the 16-bit register
 /// @param regAddress Register's address to read from
 /// @param dataBuffer Pointer to the data location being read to
-/// @param numBytes Number of bytes to read 
+/// @param numBytes Number of bytes to read
 /// @return Error code (0 is success, negative is failure)
 int8_t TMAG5273::readRegisters(uint8_t regAddress, uint8_t *dataBuffer, uint8_t numBytes)
 {
-    //uint8_t _deviceAddress = 0X22;
-    // Jump to desired register address
+    // uint8_t _deviceAddress = 0X22;
+    //  Jump to desired register address
     Wire.beginTransmission(_deviceAddress);
     Wire.write(regAddress);
     if (Wire.endTransmission())
@@ -121,8 +141,6 @@ int8_t TMAG5273::readRegisters(uint8_t regAddress, uint8_t *dataBuffer, uint8_t 
     return 0;
 }
 
-
-
 /// @brief Reads a register region from a device.
 /// @param regAddress I2C address of device
 /// @param dataBuffer Pointer to byte to store read data
@@ -130,8 +148,8 @@ int8_t TMAG5273::readRegisters(uint8_t regAddress, uint8_t *dataBuffer, uint8_t 
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::writeRegisters(uint8_t regAddress, uint8_t *dataBuffer, uint8_t numBytes)
 {
-    //uint8_t _deviceAddress = 0X22;
-    // Begin transmission
+    // uint8_t _deviceAddress = 0X22;
+    //  Begin transmission
     Wire.beginTransmission(_deviceAddress);
 
     // Write the address
@@ -173,16 +191,16 @@ uint8_t TMAG5273::writeRegister(uint8_t regAddress, uint8_t data)
     return data;
 }
 
-/// @brief Write to the correct registers the correct values to 
+/// @brief Write to the correct registers the correct values to
 ///  enter wake up and sleep mode. See page 42 of the datasheet for more
 ///  information on the values chosen.
-///     TMAG5273_INT_CONFIG_1
-///     TMAG5273_DEVICE_CONFIG_2
+///     TMAG5273_REG_INT_CONFIG_1
+///     TMAG5273_REG_DEVICE_CONFIG_2
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setupWakeUpAndSleep()
 {
-    writeRegister(TMAG5273_INT_CONFIG_1, 0X64);
-    writeRegister(TMAG5273_DEVICE_CONFIG_2, 0X23);
+    writeRegister(TMAG5273_REG_INT_CONFIG_1, 0X64);
+    writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, 0X23);
 
     return getError();
 }
@@ -197,37 +215,36 @@ int8_t TMAG5273::setupWakeUpAndSleep()
 int8_t TMAG5273::readWakeUpAndSleepData(float *xVal, float *yVal, float *zVal, float *temperature)
 {
     uint8_t wakeupRegisterRead[8];
-    readRegisters(TMAG5273_T_MSB_RESULT, wakeupRegisterRead, 4);
+    readRegisters(TMAG5273_REG_T_MSB_RESULT, wakeupRegisterRead, 4);
 
     // Need to get the values to themselves (bitwise operation)
     *zVal = (wakeupRegisterRead[6] << 8) & wakeupRegisterRead[7];
-    *yVal= (wakeupRegisterRead[4] << 8) & wakeupRegisterRead[5];
+    *yVal = (wakeupRegisterRead[4] << 8) & wakeupRegisterRead[5];
     *xVal = (wakeupRegisterRead[2] << 8) & wakeupRegisterRead[3];
-    *temperature= (wakeupRegisterRead[0] << 8) & wakeupRegisterRead[1];
-    
+    *temperature = (wakeupRegisterRead[0] << 8) & wakeupRegisterRead[1];
+
     // Reads to see if the range is set to 40mT or 80mT
     uint8_t rangeValXY = getXYAxisRange();
     uint8_t range = 0;
-    if(rangeValXY == 0)
+    if (rangeValXY == 0)
     {
         range = 40;
     }
-    else if(rangeValXY == 1)
+    else if (rangeValXY == 1)
     {
         range = 80;
     }
 
     float div = 32768;
 
-    // Return the values in the form that the equation will give 
-    *temperature = TSENSE_T0 + (256*(*temperature - (TADC_T0/256))/TADC_RES);
+    // Return the values in the form that the equation will give
+    *temperature = TMAG5273_TSENSE_T0 + (256 * (*temperature - (TMAG5273_TADC_T0 / 256)) / TMAG5273_TADC_RES);
     *xVal = -(range * (*xVal)) / div;
     *yVal = -(range * (*yVal)) / div;
     *zVal = -(range * (*zVal)) / div;
 
     return getError();
 }
-
 
 /************************************************************************************************/
 /**************************        SET CONFIGURATION SETTINGS         ***************************/
@@ -237,12 +254,12 @@ int8_t TMAG5273::readWakeUpAndSleepData(float *xVal, float *yVal, float *zVal, f
 /// @param crcMode 0b0-0b1
 /// 0X0 = CRC disabled
 /// 0X1 = CRC enabled
-/// TMAG5273_DEVICE_CONFIG_1 - bit 7
+/// TMAG5273_REG_DEVICE_CONFIG_1 - bit 7
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setCRCMode(uint8_t crcMode)
 {
     uint8_t mode = 0;
-    mode = readRegister(TMAG5273_DEVICE_CONFIG_1);
+    mode = readRegister(TMAG5273_REG_DEVICE_CONFIG_1);
 
     // If-Else statement for writing values to the register, bit by bit
     if (crcMode == 0)
@@ -250,7 +267,7 @@ int8_t TMAG5273::setCRCMode(uint8_t crcMode)
         // adds the crcMode (0 or 1) to bit 7 in the register
         bitWrite(mode, 7, 0);
         // Writes new register value to reg
-        writeRegister(TMAG5273_DEVICE_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     }
 
     else if (crcMode == 1)
@@ -258,7 +275,7 @@ int8_t TMAG5273::setCRCMode(uint8_t crcMode)
         // adds the crc_mode (0 or 1) to bit 7 in the register
         bitWrite(mode, 7, 1);
         // Writes new register value to reg
-        writeRegister(TMAG5273_DEVICE_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     }
     return getError();
 }
@@ -269,37 +286,37 @@ int8_t TMAG5273::setCRCMode(uint8_t crcMode)
 ///     X1 = 0.12%/deg C (NdBFe)
 ///     0X2 = Reserved
 ///     0X3 = 0.2%/deg C (Ceramic)
-///     TMAG5273_DEVICE_CONFIG_1 - bit 6-5
+///     TMAG5273_REG_DEVICE_CONFIG_1 - bit 6-5
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setMagTemp(uint8_t magTempMode)
 {
     uint16_t mode = 0;
-    mode = readRegister(TMAG5273_DEVICE_CONFIG_1);
+    mode = readRegister(TMAG5273_REG_DEVICE_CONFIG_1);
 
     // If-Else statement for writing values to the register, bit by bit
     if (magTempMode == 0) // 0b00
     {
         bitWrite(mode, 6, 0);
         bitWrite(mode, 5, 0);
-        writeRegister(TMAG5273_DEVICE_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     }
     else if (magTempMode == 0x1) // 0b01
     {
         bitWrite(mode, 6, 0);
         bitWrite(mode, 5, 1);
-        writeRegister(TMAG5273_DEVICE_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     }
     else if (magTempMode == 0x2) // 0b10
     {
         bitWrite(mode, 6, 1);
         bitWrite(mode, 5, 0);
-        writeRegister(TMAG5273_DEVICE_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     }
     else if (magTempMode == 0x3) // 0b11
     {
         bitWrite(mode, 6, 1);
         bitWrite(mode, 5, 1);
-        writeRegister(TMAG5273_DEVICE_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     }
     return getError();
 }
@@ -313,12 +330,12 @@ int8_t TMAG5273::setMagTemp(uint8_t magTempMode)
 ///     0X3 = 8x average, 1.6-kSPS (3-axes) or 4.4-kSPS (1 axis)
 ///     0X4 = 16x average, 0.8-kSPS (3-axes) or 2.4-kSPS (1 axis)
 ///     0X5 =  32x average, 0.4-kSPS (3-axes) or 1.2-kSPS (1 axis)
-///     TMAG5273_DEVICE_CONFIG_1 - bit 4-2
+///     TMAG5273_REG_DEVICE_CONFIG_1 - bit 4-2
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setConvAvg(uint8_t avgMode)
 {
     uint8_t mode = 0;
-    mode = readRegister(TMAG5273_DEVICE_CONFIG_1);
+    mode = readRegister(TMAG5273_REG_DEVICE_CONFIG_1);
 
     // If-Else statement for writing values to the register, bit by bit
     if (avgMode == 0) // 0b000
@@ -326,42 +343,42 @@ int8_t TMAG5273::setConvAvg(uint8_t avgMode)
         bitWrite(mode, 2, 0);
         bitWrite(mode, 3, 0);
         bitWrite(mode, 4, 0);
-        writeRegister(TMAG5273_DEVICE_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     }
     else if (avgMode == 0x1) // 0b001
     {
         bitWrite(mode, 2, 1);
         bitWrite(mode, 3, 0);
         bitWrite(mode, 4, 0);
-        writeRegister(TMAG5273_DEVICE_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     }
     else if (avgMode == 0x2) // 0b010
     {
         bitWrite(mode, 2, 0);
         bitWrite(mode, 3, 1);
         bitWrite(mode, 4, 0);
-        writeRegister(TMAG5273_DEVICE_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     }
     else if (avgMode == 0x3) // 0b011
     {
         bitWrite(mode, 2, 1);
         bitWrite(mode, 3, 1);
         bitWrite(mode, 4, 0);
-        writeRegister(TMAG5273_DEVICE_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     }
     else if (avgMode == 0x4) // 0b100
     {
         bitWrite(mode, 2, 0);
         bitWrite(mode, 3, 0);
         bitWrite(mode, 4, 1);
-        writeRegister(TMAG5273_DEVICE_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     }
     else if (avgMode == 0x5) // 0b101
     {
         bitWrite(mode, 2, 1);
         bitWrite(mode, 3, 0);
         bitWrite(mode, 4, 1);
-        writeRegister(TMAG5273_DEVICE_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     }
 
     return getError();
@@ -370,36 +387,35 @@ int8_t TMAG5273::setConvAvg(uint8_t avgMode)
 /// @brief Defines the I2C read mode of the device
 /// @param readMode Value to set the read mode
 ///     0X0 = Standard I2C 3-byte read command
-///     0X1 = 1-byte I2C read command for 16bit sensor data and 
+///     0X1 = 1-byte I2C read command for 16bit sensor data and
 ///           conversion status
-///     0X2 = 1-byte I2C read command for 8bit sernsor MSB data and 
+///     0X2 = 1-byte I2C read command for 8bit sernsor MSB data and
 ///           conversion status
-///     TMAG5273_DEVICE_CONFIG_1 Bits 0-1
+///     TMAG5273_REG_DEVICE_CONFIG_1 Bits 0-1
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setReadMode(uint8_t readMode)
 {
     uint8_t mode = 0;
-    mode = readRegister(TMAG5273_DEVICE_CONFIG_1);
+    mode = readRegister(TMAG5273_REG_DEVICE_CONFIG_1);
 
     // Write values to the register, bit by bit
-    if(mode == 0)
+    if (mode == 0)
     {
         bitWrite(mode, 0, 0);
         bitWrite(mode, 1, 0);
     }
-    else if(mode == 1)
+    else if (mode == 1)
     {
         bitWrite(mode, 0, 1);
         bitWrite(mode, 1, 0);
     }
-    else if(mode == 2) // 
+    else if (mode == 2) //
     {
         bitWrite(mode, 0, 0);
         bitWrite(mode, 1, 1);
     }
 
     return getError();
-
 }
 
 /// @brief Sets the threshold for the interrupt function
@@ -410,12 +426,12 @@ int8_t TMAG5273::setReadMode(uint8_t readMode)
 ///       two opposite magnetic thresholds (one north, and another south)
 ///       of equal magnitude
 ///     The rest of the bits are reserved (0x2 - 0x7) - DO NOT USE
-///     TMAG5273_DEVICE_CONFIG_2 - bit 7-5
+///     TMAG5273_REG_DEVICE_CONFIG_2 - bit 7-5
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setIntThreshold(uint8_t threshold)
 {
     uint16_t mode = 0;
-    mode = readRegister(TMAG5273_DEVICE_CONFIG_2);
+    mode = readRegister(TMAG5273_REG_DEVICE_CONFIG_2);
 
     // If-Else statement for writing values to the register, bit by bit
     if (threshold == 0) // 0b00
@@ -426,7 +442,7 @@ int8_t TMAG5273::setIntThreshold(uint8_t threshold)
         bitWrite(mode, 6, 0);
         // Writes a 0 to bit 5
         bitWrite(mode, 5, 0);
-        writeRegister(TMAG5273_DEVICE_CONFIG_2, mode);
+        writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
     }
     else if (threshold == 0x1) // 0b001
     {
@@ -436,7 +452,7 @@ int8_t TMAG5273::setIntThreshold(uint8_t threshold)
         bitWrite(mode, 6, 0);
         // Writes a 1 to bit 5
         bitWrite(mode, 5, 1);
-        writeRegister(TMAG5273_DEVICE_CONFIG_2, mode);
+        writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
     }
 
     return getError();
@@ -446,12 +462,12 @@ int8_t TMAG5273::setIntThreshold(uint8_t threshold)
 /// @param lpLnMode Value to set the mode
 ///    0X0 = Low active current mode
 ///    0X1 = Low noise mode
-///    TMAG5273_DEVICE_CONFIG_2 - bit 4
+///    TMAG5273_REG_DEVICE_CONFIG_2 - bit 4
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setLowPower(uint8_t lpLnMode)
 {
     uint16_t mode = 0;
-    mode = readRegister(TMAG5273_DEVICE_CONFIG_2);
+    mode = readRegister(TMAG5273_REG_DEVICE_CONFIG_2);
 
     // If-Else statement for writing values to the register, bit by bit
     if (lpLnMode == 0) // 0b0
@@ -459,12 +475,12 @@ int8_t TMAG5273::setLowPower(uint8_t lpLnMode)
         // 0b0 - Low active current mode
         bitWrite(mode, 4, 0);
         // Writes new value to register
-        writeRegister(TMAG5273_DEVICE_CONFIG_2, mode);
+        writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
     }
     else if (lpLnMode == 1) // 0b1 - Low noise mode
     {
         bitWrite(mode, 4, 1);
-        writeRegister(TMAG5273_DEVICE_CONFIG_2, mode);
+        writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
     }
 
     return getError();
@@ -474,12 +490,12 @@ int8_t TMAG5273::setLowPower(uint8_t lpLnMode)
 /// @param glitchMode value to set the mode
 ///     0x0 = Glitch filter ON
 ///     0X0 = Glitch filter OFF
-///     TMAG5273_DEVICE_CONFIG_2 - bit 3
+///     TMAG5273_REG_DEVICE_CONFIG_2 - bit 3
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setGlitchFilter(uint8_t glitchMode)
 {
     uint16_t mode = 0;
-    mode = readRegister(TMAG5273_DEVICE_CONFIG_2);
+    mode = readRegister(TMAG5273_REG_DEVICE_CONFIG_2);
 
     // If-Else statement for writing values to the register, bit by bit
     if (glitchMode == 0) // 0b0 - Glitch filter on
@@ -487,12 +503,12 @@ int8_t TMAG5273::setGlitchFilter(uint8_t glitchMode)
         // Writes 0 to glitch filter bit
         bitWrite(mode, 3, 0);
         // Writes new register value to reg
-        writeRegister(TMAG5273_DEVICE_CONFIG_2, mode);
+        writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
     }
     else if (glitchMode == 1) // 0b1 - Glitch filter off
     {
         bitWrite(mode, 3, 1);
-        writeRegister(TMAG5273_DEVICE_CONFIG_2, mode);
+        writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
     }
 
     return getError();
@@ -505,23 +521,23 @@ int8_t TMAG5273::setGlitchFilter(uint8_t glitchMode)
 /// @param trigMode value to set the trigger mode of the device
 ///     0X0 = Conversion Start at I2C Command Bits, DEFAULT
 ///     0X1 = Conversion starts through trigger signal at !INT pin
-///     TMAG5273_DEVICE_CONFIG_2 - bit 2
+///     TMAG5273_REG_DEVICE_CONFIG_2 - bit 2
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setTriggerMode(uint8_t trigMode)
 {
     uint16_t mode = 0;
-    mode = readRegister(TMAG5273_DEVICE_CONFIG_2);
+    mode = readRegister(TMAG5273_REG_DEVICE_CONFIG_2);
 
     // If-Else statement for writing values to the register, bit by bit
     if (trigMode == 0) // 0b0
     {
         bitWrite(mode, 2, 0);
-        writeRegister(TMAG5273_DEVICE_CONFIG_2, mode);
+        writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
     }
     else if (trigMode == 0X1) // 0b1
     {
         bitWrite(mode, 2, 1);
-        writeRegister(TMAG5273_DEVICE_CONFIG_2, mode);
+        writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
     }
 
     return getError();
@@ -535,12 +551,12 @@ int8_t TMAG5273::setTriggerMode(uint8_t trigMode)
 ///     0X1 = Sleep mode
 ///     0X2 = Continuous measure mode
 ///     0X3 = Wake-up and sleep mode (W&S Mode)
-///     TMAG5273_DEVICE_CONFIG_2 - bit 1-0
+///     TMAG5273_REG_DEVICE_CONFIG_2 - bit 1-0
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setOperatingMode(uint8_t opMode)
 {
     uint16_t mode = 0;
-    mode = readRegister(TMAG5273_DEVICE_CONFIG_2);
+    mode = readRegister(TMAG5273_REG_DEVICE_CONFIG_2);
 
     // If-Else statement for writing values to the register, bit by bit
     if (opMode == 0) // 0b00
@@ -549,7 +565,7 @@ int8_t TMAG5273::setOperatingMode(uint8_t opMode)
         bitWrite(mode, 0, 0);
         // Write 0 to bit 1
         bitWrite(mode, 1, 0);
-        writeRegister(TMAG5273_DEVICE_CONFIG_2, mode);
+        writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
     }
     else if (opMode == 0X1) // 0b01
     {
@@ -557,21 +573,21 @@ int8_t TMAG5273::setOperatingMode(uint8_t opMode)
         bitWrite(mode, 0, 1);
         // Write 0 to bit 1
         bitWrite(mode, 1, 0);
-        writeRegister(TMAG5273_DEVICE_CONFIG_2, mode);
+        writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
     }
     else if (opMode == 0X2) // 0b10
     {
         bitWrite(mode, 0, 0);
         bitWrite(mode, 1, 1);
-        writeRegister(TMAG5273_DEVICE_CONFIG_2, mode);
+        writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
     }
     else if (opMode == 0X3) // 0b11
     {
         bitWrite(mode, 0, 1);
         bitWrite(mode, 1, 1);
-        writeRegister(TMAG5273_DEVICE_CONFIG_2, mode);
+        writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
     }
-    
+
     Serial.println(mode, HEX);
 
     return getError();
@@ -592,12 +608,12 @@ int8_t TMAG5273::setOperatingMode(uint8_t opMode)
 ///     0X9 = YXY Channel Enabled
 ///     0XA = YZY Channel Enabled
 ///     0XB = XZX Channel Enabled
-///     TMAG5273_SENSOR_CONFIG_1 - bits 7-4
+///     TMAG5273_REG_SENSOR_CONFIG_1 - bits 7-4
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setMagneticChannel(uint8_t channelMode)
 {
     uint16_t mode = 0;
-    mode = readRegister(TMAG5273_SENSOR_CONFIG_1);
+    mode = readRegister(TMAG5273_REG_SENSOR_CONFIG_1);
 
     // If-Else statement for writing values to the register, bit by bit
     if (channelMode == 0X0) // 0b0000
@@ -610,9 +626,9 @@ int8_t TMAG5273::setMagneticChannel(uint8_t channelMode)
         bitWrite(mode, 6, 0);
         // Writes 0 to bit 7 of the register
         bitWrite(mode, 7, 0);
-        // Writes the new register value back into TMAG5273_SENSOR_CONFIG_1
-        writeRegister(TMAG5273_SENSOR_CONFIG_1, mode);
-        // writeRegisterRegion(TMAG5273_SENSOR_CONFIG_1, mode, 0);
+        // Writes the new register value back into TMAG5273_REG_SENSOR_CONFIG_1
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
+        // writeRegisterRegion(TMAG5273_REG_SENSOR_CONFIG_1, mode, 0);
     }
     else if (channelMode == 0X1) // 0x0001
     {
@@ -620,7 +636,7 @@ int8_t TMAG5273::setMagneticChannel(uint8_t channelMode)
         bitWrite(mode, 5, 0);
         bitWrite(mode, 6, 0);
         bitWrite(mode, 7, 0);
-        writeRegister(TMAG5273_SENSOR_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (channelMode == 0X2) // 0x0010
     {
@@ -628,7 +644,7 @@ int8_t TMAG5273::setMagneticChannel(uint8_t channelMode)
         bitWrite(mode, 5, 1);
         bitWrite(mode, 6, 0);
         bitWrite(mode, 7, 0);
-        writeRegister(TMAG5273_SENSOR_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (channelMode == 0X3) // 0x0011
     {
@@ -636,7 +652,7 @@ int8_t TMAG5273::setMagneticChannel(uint8_t channelMode)
         bitWrite(mode, 5, 1);
         bitWrite(mode, 6, 0);
         bitWrite(mode, 7, 0);
-        writeRegister(TMAG5273_SENSOR_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (channelMode == 0X4) // 0x0100
     {
@@ -644,7 +660,7 @@ int8_t TMAG5273::setMagneticChannel(uint8_t channelMode)
         bitWrite(mode, 5, 0);
         bitWrite(mode, 6, 1);
         bitWrite(mode, 7, 0);
-        writeRegister(TMAG5273_SENSOR_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (channelMode == 0X5) // 0x0101
     {
@@ -652,7 +668,7 @@ int8_t TMAG5273::setMagneticChannel(uint8_t channelMode)
         bitWrite(mode, 5, 0);
         bitWrite(mode, 6, 1);
         bitWrite(mode, 7, 0);
-        writeRegister(TMAG5273_SENSOR_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (channelMode == 0X6) // 0x0110
     {
@@ -660,7 +676,7 @@ int8_t TMAG5273::setMagneticChannel(uint8_t channelMode)
         bitWrite(mode, 5, 1);
         bitWrite(mode, 6, 1);
         bitWrite(mode, 7, 0);
-        writeRegister(TMAG5273_SENSOR_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (channelMode == 0X7) // 0x0111
     {
@@ -668,7 +684,7 @@ int8_t TMAG5273::setMagneticChannel(uint8_t channelMode)
         bitWrite(mode, 5, 1);
         bitWrite(mode, 6, 1);
         bitWrite(mode, 7, 0);
-        writeRegister(TMAG5273_SENSOR_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (channelMode == 0X8) // 0x1000
     {
@@ -676,7 +692,7 @@ int8_t TMAG5273::setMagneticChannel(uint8_t channelMode)
         bitWrite(mode, 5, 0);
         bitWrite(mode, 6, 0);
         bitWrite(mode, 7, 1);
-        writeRegister(TMAG5273_SENSOR_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (channelMode == 0X9) // 0x1001
     {
@@ -684,7 +700,7 @@ int8_t TMAG5273::setMagneticChannel(uint8_t channelMode)
         bitWrite(mode, 5, 0);
         bitWrite(mode, 6, 0);
         bitWrite(mode, 7, 1);
-        writeRegister(TMAG5273_SENSOR_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (channelMode == 0XA) // 0x1010
     {
@@ -692,7 +708,7 @@ int8_t TMAG5273::setMagneticChannel(uint8_t channelMode)
         bitWrite(mode, 5, 1);
         bitWrite(mode, 6, 0);
         bitWrite(mode, 7, 1);
-        writeRegister(TMAG5273_SENSOR_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (channelMode == 0XB) // 0x1011
     {
@@ -700,7 +716,7 @@ int8_t TMAG5273::setMagneticChannel(uint8_t channelMode)
         bitWrite(mode, 5, 1);
         bitWrite(mode, 6, 0);
         bitWrite(mode, 7, 1);
-        writeRegister(TMAG5273_SENSOR_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
 
     return getError();
@@ -722,12 +738,12 @@ int8_t TMAG5273::setMagneticChannel(uint8_t channelMode)
 ///     0XA = 2000ms
 ///     0XB = 5000ms
 ///     0XC = 20000ms
-///     TMAG5273_SENSOR_CONFIG_1 - bit 3-0
+///     TMAG5273_REG_SENSOR_CONFIG_1 - bit 3-0
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
 {
     uint16_t mode = 0;
-    mode = readRegister(TMAG5273_SENSOR_CONFIG_1);
+    mode = readRegister(TMAG5273_REG_SENSOR_CONFIG_1);
 
     if (sleepTime == 0X0) // 0b0000
     {
@@ -735,7 +751,7 @@ int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
         bitWrite(mode, 1, 0);
         bitWrite(mode, 2, 0);
         bitWrite(mode, 3, 0);
-        writeRegister(TMAG5273_SENSOR_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (sleepTime == 0X1) // 0b0001
     {
@@ -743,7 +759,7 @@ int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
         bitWrite(mode, 1, 0);
         bitWrite(mode, 2, 0);
         bitWrite(mode, 3, 0);
-        writeRegister(TMAG5273_SENSOR_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (sleepTime == 0X2) // 0b0010
     {
@@ -751,7 +767,7 @@ int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
         bitWrite(mode, 1, 1);
         bitWrite(mode, 2, 0);
         bitWrite(mode, 3, 0);
-        writeRegister(TMAG5273_SENSOR_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (sleepTime == 0X3) // 0b0011
     {
@@ -759,7 +775,7 @@ int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
         bitWrite(mode, 1, 1);
         bitWrite(mode, 2, 0);
         bitWrite(mode, 3, 0);
-        writeRegister(TMAG5273_SENSOR_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (sleepTime == 0X4) // 0b0100
     {
@@ -767,7 +783,7 @@ int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
         bitWrite(mode, 1, 0);
         bitWrite(mode, 2, 1);
         bitWrite(mode, 3, 0);
-        writeRegister(TMAG5273_SENSOR_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (sleepTime == 0X5) // 0b0101
     {
@@ -775,7 +791,7 @@ int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
         bitWrite(mode, 1, 0);
         bitWrite(mode, 2, 1);
         bitWrite(mode, 3, 0);
-        writeRegister(TMAG5273_SENSOR_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (sleepTime == 0X6) // 0b0110
     {
@@ -783,7 +799,7 @@ int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
         bitWrite(mode, 1, 1);
         bitWrite(mode, 2, 1);
         bitWrite(mode, 3, 0);
-        writeRegister(TMAG5273_SENSOR_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (sleepTime == 0X7) // 0b0111
     {
@@ -791,7 +807,7 @@ int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
         bitWrite(mode, 1, 1);
         bitWrite(mode, 2, 1);
         bitWrite(mode, 3, 0);
-        writeRegister(TMAG5273_SENSOR_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (sleepTime == 0X8) // 0b1000
     {
@@ -799,7 +815,7 @@ int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
         bitWrite(mode, 1, 0);
         bitWrite(mode, 2, 0);
         bitWrite(mode, 3, 1);
-        writeRegister(TMAG5273_SENSOR_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (sleepTime == 0X9) // 0b1001
     {
@@ -807,7 +823,7 @@ int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
         bitWrite(mode, 1, 0);
         bitWrite(mode, 2, 0);
         bitWrite(mode, 3, 1);
-        writeRegister(TMAG5273_SENSOR_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (sleepTime == 0XA) // 0b1010
     {
@@ -815,7 +831,7 @@ int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
         bitWrite(mode, 1, 1);
         bitWrite(mode, 2, 0);
         bitWrite(mode, 3, 1);
-        writeRegister(TMAG5273_SENSOR_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (sleepTime == 0XB) // 0b1011
     {
@@ -823,7 +839,7 @@ int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
         bitWrite(mode, 1, 1);
         bitWrite(mode, 2, 0);
         bitWrite(mode, 3, 1);
-        writeRegister(TMAG5273_SENSOR_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (sleepTime == 0XC) // 0b1100
     {
@@ -831,7 +847,7 @@ int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
         bitWrite(mode, 1, 0);
         bitWrite(mode, 2, 1);
         bitWrite(mode, 3, 1);
-        writeRegister(TMAG5273_SENSOR_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
 
     return getError();
@@ -842,12 +858,12 @@ int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
 /// @param threshDir value to set the direction of threshold
 ///     0X0 = sets interrupt for field above the threshold
 ///     0X1 = sets interrupt for field below the threshold
-///     TMAG5273_SENSOR_CONFIG_2 - bit 5
+///     TMAG5273_REG_SENSOR_CONFIG_2 - bit 5
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setMagDir(uint8_t threshDir)
 {
     uint16_t mode = 0;
-    mode = readRegister(TMAG5273_SENSOR_CONFIG_2);
+    mode = readRegister(TMAG5273_REG_SENSOR_CONFIG_2);
 
     // If-Else statement for writing values to the register, bit by bit
     if (threshDir == 0X0) // 0b0
@@ -855,12 +871,12 @@ int8_t TMAG5273::setMagDir(uint8_t threshDir)
         // Write 0 to bit 5 of the register value
         bitWrite(mode, 5, 0);
         // Writes mode to the CONFIG_2 register
-        writeRegister(TMAG5273_SENSOR_CONFIG_2, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
     }
     else if (threshDir == 0X1) // 0b1
     {
         bitWrite(mode, 5, 1);
-        writeRegister(TMAG5273_SENSOR_CONFIG_2, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
     }
 
     return getError();
@@ -871,12 +887,12 @@ int8_t TMAG5273::setMagDir(uint8_t threshDir)
 /// @param gainAdjust Value to set the gain correction value
 ///     0X0 = 1st channel is selected for gain adjustment
 ///     0X1 = 2nd channel is selected for gain adjustment
-///     TMAG5273_SENSOR_CONFIG_2 - bit 4
+///     TMAG5273_REG_SENSOR_CONFIG_2 - bit 4
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setMagnitudeGain(uint8_t gainAdjust)
 {
     uint16_t mode = 0;
-    mode = readRegister(TMAG5273_SENSOR_CONFIG_2);
+    mode = readRegister(TMAG5273_REG_SENSOR_CONFIG_2);
 
     // If-Else statement for writing values to the register, bit by bit
     if (gainAdjust == 0X0) // 0b0
@@ -884,70 +900,70 @@ int8_t TMAG5273::setMagnitudeGain(uint8_t gainAdjust)
         // Write 0 to bit 4 of the register value
         bitWrite(mode, 4, 0);
         // Writes mode to the CONFIG_2 register
-        writeRegister(TMAG5273_SENSOR_CONFIG_2, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
     }
     else if (gainAdjust == 0X1) // 0b1
     {
         bitWrite(mode, 4, 1);
-        writeRegister(TMAG5273_SENSOR_CONFIG_2, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
     }
 
     return getError();
 }
 
-/// @brief This function sets an 8-bit gain value determined by a 
+/// @brief This function sets an 8-bit gain value determined by a
 ///  primary to adjust a Hall axis gain. The particular axis is selected
 ///  based off the settings of MAG_GAIN_CH and ANGLE_EN register bits.
-///  The binary 8-bit input is interpreted as a fracitonal value between 
+///  The binary 8-bit input is interpreted as a fracitonal value between
 ///  0 and 1 based off the formula 'user entered value in decimal/256.'
-///  Gain value of 0 is interpreted by the device as 1. 
-///     TMAG5273_MAG_GAIN_CONFIG
-/// @param magneticGain 
+///  Gain value of 0 is interpreted by the device as 1.
+///     TMAG5273_REG_MAG_GAIN_CONFIG
+/// @param magneticGain
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setMagneticGain(float magneticGain)
 {
-    // Convert magneticGain to be the correct value to write to their register 
+    // Convert magneticGain to be the correct value to write to their register
     int8_t magneticGainReg = 0;
-    magneticGainReg = magneticGain/256;
+    magneticGainReg = magneticGain / 256;
 
     // Write value to register
-    writeRegister(TMAG5273_MAG_GAIN_CONFIG, magneticGainReg);
+    writeRegister(TMAG5273_REG_MAG_GAIN_CONFIG, magneticGainReg);
 
     return getError();
 }
 
 /// @brief This function will write an 8-bit, 2's complement offset value
-///  determined by a primary to adjust the first axis offset value. The 
-///  range of possible offset valid entrees can be +/-128. The offset value 
+///  determined by a primary to adjust the first axis offset value. The
+///  range of possible offset valid entrees can be +/-128. The offset value
 ///  is calculated by multiplying bit resolution with the entered value.
-///     TMAG5273_MAG_OFFSET_CONFIG_1
+///     TMAG5273_REG_MAG_OFFSET_CONFIG_1
 /// @param offset1 Value within the range +/-128
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setMagneticOffset1(float offset1)
 {
     uint8_t rangeValXY = getXYAxisRange();
     uint8_t range = 0;
-    if(rangeValXY == 0)
+    if (rangeValXY == 0)
     {
         range = 40;
     }
-    else if(rangeValXY == 1)
+    else if (rangeValXY == 1)
     {
         range = 80;
     }
-    
+
     // Multiply bit resolution with entered value from datasheet
-    int8_t magOffset = (2048*offset1)/range; // 2048 = 2^12
-    writeRegister(TMAG5273_MAG_OFFSET_CONFIG_1, magOffset);
+    int8_t magOffset = (2048 * offset1) / range; // 2048 = 2^12
+    writeRegister(TMAG5273_REG_MAG_OFFSET_CONFIG_1, magOffset);
 
     return getError();
 }
 
 /// @brief This function will write an 8-bit, 2's complement offset value
-///  determined by a primary to adjust the first axis offset value. The 
-///  range of possible offset valid entrees can be +/-128. The offset value 
+///  determined by a primary to adjust the first axis offset value. The
+///  range of possible offset valid entrees can be +/-128. The offset value
 ///  is calculated by multiplying bit resolution with the entered value.
-///     TMAG5273_MAG_OFFSET_CONFIG_2
+///     TMAG5273_REG_MAG_OFFSET_CONFIG_2
 /// @param offset2 Value within the range +/-128
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setMagneticOffset2(float offset2)
@@ -960,11 +976,11 @@ int8_t TMAG5273::setMagneticOffset2(float offset2)
     // See which XY axis range is currently set
     uint8_t rangeValXY = getXYAxisRange();
     uint8_t rangeXY = 0;
-    if(rangeValXY == 0)
+    if (rangeValXY == 0)
     {
         range = 40;
     }
-    else if(rangeValXY == 1)
+    else if (rangeValXY == 1)
     {
         range = 80;
     }
@@ -972,25 +988,25 @@ int8_t TMAG5273::setMagneticOffset2(float offset2)
     // See which Z axis range is currently set
     uint8_t rangeValZ = getZAxisRange();
     uint8_t rangeZ = 0;
-    if(rangeValZ == 0)
+    if (rangeValZ == 0)
     {
         rangeZ = 40;
     }
-    else if(rangeValZ == 1)
+    else if (rangeValZ == 1)
     {
         rangeZ = 80;
     }
 
     // Choose the channel
-    if(channelSelect == 1) // Y
+    if (channelSelect == 1) // Y
     {
         range = rangeXY; // 40 or 80
     }
-    else if(channelSelect == 2) // Z 
+    else if (channelSelect == 2) // Z
     {
         range = rangeZ; // 40 or 80
     }
-    else if(channelSelect == 3) // Z
+    else if (channelSelect == 3) // Z
     {
         range = rangeZ; // 40 or 80
     }
@@ -1000,10 +1016,10 @@ int8_t TMAG5273::setMagneticOffset2(float offset2)
         // Error could also be the ranges being disabled
     }
 
-    // Multiply bit resolution with entered value 
-    int8_t magOffset = (2048*offset2)/range; // 2048 = 2^12
+    // Multiply bit resolution with entered value
+    int8_t magOffset = (2048 * offset2) / range; // 2048 = 2^12
     // Write correct value to register
-    writeRegister(TMAG5273_MAG_OFFSET_CONFIG_2, magOffset);
+    writeRegister(TMAG5273_REG_MAG_OFFSET_CONFIG_2, magOffset);
 
     return getError();
 }
@@ -1016,12 +1032,12 @@ int8_t TMAG5273::setMagneticOffset2(float offset2)
 ///     0X1 = X 1st, Y 2nd
 ///     0X2 = Y 1st, Z 2nd
 ///     0X3 = X 1st, Z 2nd
-///     TMAG5273_SENSOR_CONFIG_2 - bit 3-2
+///     TMAG5273_REG_SENSOR_CONFIG_2 - bit 3-2
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setAngleEn(uint8_t angleEnable)
 {
     uint16_t mode = 0;
-    mode = readRegister(TMAG5273_SENSOR_CONFIG_2);
+    mode = readRegister(TMAG5273_REG_SENSOR_CONFIG_2);
 
     // If-Else statement for writing values to the register, bit by bit
     if (angleEnable == 0X0) // 0b00
@@ -1031,28 +1047,28 @@ int8_t TMAG5273::setAngleEn(uint8_t angleEnable)
         // Write 0 to bit 3 of the register value
         bitWrite(mode, 3, 0);
         // Writes mode to the CONFIG_2 register
-        writeRegister(TMAG5273_SENSOR_CONFIG_2, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
     }
     else if (angleEnable == 0X1) // 0b01
     {
         bitWrite(mode, 2, 1);
         bitWrite(mode, 3, 0);
         // Writes mode to the CONFIG_2 register
-        writeRegister(TMAG5273_SENSOR_CONFIG_2, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
     }
     else if (angleEnable == 0X2) // 0b10
     {
         bitWrite(mode, 2, 0);
         bitWrite(mode, 3, 1);
         // Writes mode to the CONFIG_2 register
-        writeRegister(TMAG5273_SENSOR_CONFIG_2, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
     }
     else if (angleEnable == 0X3) // 0b11
     {
         bitWrite(mode, 2, 1);
         bitWrite(mode, 3, 1);
         // Writes mode to the CONFIG_2 register
-        writeRegister(TMAG5273_SENSOR_CONFIG_2, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
     }
 
     return getError();
@@ -1062,12 +1078,12 @@ int8_t TMAG5273::setAngleEn(uint8_t angleEnable)
 /// @param xyAxisRange Value to choose the magnetic range
 ///     0X0 = ±40mT, DEFAULT
 ///     0X1 = ±80mT
-///     TMAG5273_SENSOR_CONFIG_2 - bit 1
+///     TMAG5273_REG_SENSOR_CONFIG_2 - bit 1
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setXYAxisRange(uint8_t xyAxisRange)
 {
     uint16_t mode = 0;
-    mode = readRegister(TMAG5273_SENSOR_CONFIG_2);
+    mode = readRegister(TMAG5273_REG_SENSOR_CONFIG_2);
 
     // If-Else statement for writing values to the register, bit by bit
     if (xyAxisRange == 0X0) // 0b0
@@ -1075,12 +1091,12 @@ int8_t TMAG5273::setXYAxisRange(uint8_t xyAxisRange)
         // Write 0 to bit 1 of the register value
         bitWrite(mode, 1, 0);
         // Writes mode to the CONFIG_2 register
-        writeRegister(TMAG5273_SENSOR_CONFIG_2, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
     }
     else if (xyAxisRange == 0X1) // 0b1
     {
         bitWrite(mode, 1, 1);
-        writeRegister(TMAG5273_SENSOR_CONFIG_2, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
     }
 
     return getError();
@@ -1090,12 +1106,12 @@ int8_t TMAG5273::setXYAxisRange(uint8_t xyAxisRange)
 /// @param zAxisRange Value to set the range from either 40mT or 80mT
 ///     0X0 = ±40mT, DEFAULT
 ///     0X1 = ±80mT
-///     TMAG5273_SENSOR_CONFIG_2 - bit 0
+///     TMAG5273_REG_SENSOR_CONFIG_2 - bit 0
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setZAxisRange(uint8_t zAxisRange)
 {
     uint16_t mode = 0;
-    mode = readRegister(TMAG5273_SENSOR_CONFIG_2);
+    mode = readRegister(TMAG5273_REG_SENSOR_CONFIG_2);
 
     // If-Else statement for writing values to the register, bit by bit
     if (zAxisRange == 0X0) // 0b0
@@ -1103,12 +1119,12 @@ int8_t TMAG5273::setZAxisRange(uint8_t zAxisRange)
         // Write 0 to bit 0 of the register value
         bitWrite(mode, 0, 0);
         // Writes mode to the CONFIG_2 register
-        writeRegister(TMAG5273_SENSOR_CONFIG_2, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
     }
     else if (zAxisRange == 0X1) // 0b1
     {
         bitWrite(mode, 0, 1);
-        writeRegister(TMAG5273_SENSOR_CONFIG_2, mode);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
     }
 
     return getError();
@@ -1119,16 +1135,16 @@ int8_t TMAG5273::setZAxisRange(uint8_t zAxisRange)
 ///  threshold value in mT is calculated as (40(1+X_Y_RANGE)/128)*X_THR_CONFIG.
 ///  Default 0h means no threshold comparison.
 /// @param xThreshold 8-bit value to set the threshold for the X limit
-///     TMAG5273_X_THR_CONFIG - bits 7-0
+///     TMAG5273_REG_X_THR_CONFIG - bits 7-0
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setXThreshold(float xThreshold)
 {
     uint8_t range = getXYAxisRange();
     // Mulyiply raw value by threshold equation in datasheet
-    int8_t threshold = xThreshold*128/(40*(1+range));
-    
+    int8_t threshold = xThreshold * 128 / (40 * (1 + range));
+
     // Write the correct value to the register
-    writeRegister(TMAG5273_X_THR_CONFIG, threshold);
+    writeRegister(TMAG5273_REG_X_THR_CONFIG, threshold);
 
     return getError();
 }
@@ -1138,15 +1154,15 @@ int8_t TMAG5273::setXThreshold(float xThreshold)
 ///  threshold value in mT is calculated as (40(1+X_Y_RANGE)/128)*Y_THR_CONFIG.
 ///  Default 0h means no threshold comparison.
 /// @param yThreshold 8-bit value to set the threshold for the Y limit
-///     TMAG5273_Y_THR_CONFIG - bits 7-0
+///     TMAG5273_REG_Y_THR_CONFIG - bits 7-0
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setYThreshold(float yThreshold)
 {
     uint8_t range = getXYAxisRange();
     // Mulyiply raw value by threshold equation in datasheet
-    int8_t threshold = yThreshold*128/(40*(1+range));
+    int8_t threshold = yThreshold * 128 / (40 * (1 + range));
     // Write the correct value to the register
-    writeRegister(TMAG5273_Y_THR_CONFIG, threshold);
+    writeRegister(TMAG5273_REG_Y_THR_CONFIG, threshold);
 
     return getError();
 }
@@ -1156,16 +1172,16 @@ int8_t TMAG5273::setYThreshold(float yThreshold)
 ///  threshold value in mT is calculated as (40(1+Z_RANGE)/128)*Z_THR_CONFIG.
 ///  Default 0h means no threshold comparison.
 /// @param zThresh 8-bit value to set the threshold for the Y limit
-///     TMAG5273_Z_THR_CONFIG - bits 7-0
+///     TMAG5273_REG_Z_THR_CONFIG - bits 7-0
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setZThreshold(float zThreshold)
 {
     // See which Z axis range is currently set
     uint8_t range = getZAxisRange();
     // Mulyiply raw value by threshold equation in datasheet
-    int8_t threshold = zThreshold*128/(40*(1+range));
+    int8_t threshold = zThreshold * 128 / (40 * (1 + range));
     // Write the correct value to the register
-    writeRegister(TMAG5273_Z_THR_CONFIG, threshold);
+    writeRegister(TMAG5273_REG_Z_THR_CONFIG, threshold);
 
     return getError();
 }
@@ -1175,12 +1191,12 @@ int8_t TMAG5273::setZThreshold(float zThreshold)
 ///  threshold codes for -41C = 0X1A, and 170C = 0X34. Resoltuion is
 ///  8 degree C/LSB. Default 0x0 means no threshold comparison.
 /// @param tempThresh 8-bit value to set the threshold for the temperature limit
-///     TMAG5273_T_CONFIG - bits 7-1
+///     TMAG5273_REG_T_CONFIG - bits 7-1
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setTemperatureThreshold(float tempThresh)
 {
     uint8_t temp_reg = 0;
-    temp_reg = readRegister(TMAG5273_T_CONFIG);
+    temp_reg = readRegister(TMAG5273_REG_T_CONFIG);
 
     // Shift the value over by 1 to create the correct value to put into the regsiter
     temp_reg = temp_reg | (uint8_t)tempThresh;
@@ -1188,7 +1204,7 @@ int8_t TMAG5273::setTemperatureThreshold(float tempThresh)
     // Check if the value is within the range as described (-41C through 170C)
     if ((tempThresh > 0X1A) && (tempThresh < 0X34))
     {
-        writeRegister(TMAG5273_T_CONFIG, temp_reg); // Write the correct value to the register
+        writeRegister(TMAG5273_REG_T_CONFIG, temp_reg); // Write the correct value to the register
     }
 
     return getError();
@@ -1199,12 +1215,12 @@ int8_t TMAG5273::setTemperatureThreshold(float tempThresh)
 /// @param temperatureEnable Value to determine enable or disable
 ///     0x0 = Temp Channel Disabled
 ///     0x1 = Temp Channel Enabled
-///     TMAG5273_T_CONFIG - bit 0
+///     TMAG5273_REG_T_CONFIG - bit 0
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setTemperatureEn(bool temperatureEnable)
 {
     uint16_t mode = 0;
-    mode = readRegister(TMAG5273_T_CONFIG);
+    mode = readRegister(TMAG5273_REG_T_CONFIG);
 
     // If-Else statement for writing values to the register, bit by bit
     if (temperatureEnable == 0) // 0b0
@@ -1212,12 +1228,12 @@ int8_t TMAG5273::setTemperatureEn(bool temperatureEnable)
         // Write 0 to bit 7 of the register value
         bitWrite(mode, 0, 0);
         // Writes mode to the T_CONFIG register
-        writeRegister(TMAG5273_T_CONFIG, mode);
+        writeRegister(TMAG5273_REG_T_CONFIG, mode);
     }
     else if (temperatureEnable == 1) // 0b1
     {
         bitWrite(mode, 0, 1);
-        writeRegister(TMAG5273_T_CONFIG, mode);
+        writeRegister(TMAG5273_REG_T_CONFIG, mode);
     }
 
     return getError();
@@ -1229,12 +1245,12 @@ int8_t TMAG5273::setTemperatureEn(bool temperatureEnable)
 ///           conversions are complete
 ///     0X1 = Interrupt is asserted when the configured set of
 ///           conversions are complete
-///     TMAG5273_INT_CONFIG_1 - bit 7
+///     TMAG5273_REG_INT_CONFIG_1 - bit 7
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setInterruptResult(bool interruptEnable)
 {
     uint16_t mode = 0;
-    mode = readRegister(TMAG5273_INT_CONFIG_1);
+    mode = readRegister(TMAG5273_REG_INT_CONFIG_1);
 
     // If-Else statement for writing values to the register, bit by bit
     if (interruptEnable == 0) // 0b0
@@ -1242,12 +1258,12 @@ int8_t TMAG5273::setInterruptResult(bool interruptEnable)
         // Write 0 to bit 7 of the register value
         bitWrite(mode, 7, 0);
         // Writes mode to the CONFIG_1 register
-        writeRegister(TMAG5273_INT_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_INT_CONFIG_1, mode);
     }
     else if (interruptEnable == 1) // 0b1
     {
         bitWrite(mode, 7, 1);
-        writeRegister(TMAG5273_INT_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_INT_CONFIG_1, mode);
     }
 
     return getError();
@@ -1258,12 +1274,12 @@ int8_t TMAG5273::setInterruptResult(bool interruptEnable)
 /// @param enableInterruptResponse Value to determine if interrupt is or is not asserted
 ///     0X0 = Interrupt is NOT asserted when a threshold is crossed
 ///     0X1 = Interrupt is asserted when a threshold is crossed
-///     TMAG5273_INT_CONFIG_1 - bit 6
+///     TMAG5273_REG_INT_CONFIG_1 - bit 6
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setThresholdEn(bool enableInterruptResponse)
 {
     uint16_t mode = 0;
-    mode = readRegister(TMAG5273_INT_CONFIG_1);
+    mode = readRegister(TMAG5273_REG_INT_CONFIG_1);
 
     // If-Else statement for writing values to the register, bit by bit
     if (enableInterruptResponse == 0) // 0b0
@@ -1271,12 +1287,12 @@ int8_t TMAG5273::setThresholdEn(bool enableInterruptResponse)
         // Write 0 to bit 6 of the register value
         bitWrite(mode, 6, 0);
         // Writes mode to the CONFIG_2 register
-        writeRegister(TMAG5273_INT_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_INT_CONFIG_1, mode);
     }
     else if (enableInterruptResponse == 1) // 0b1
     {
         bitWrite(mode, 6, 1);
-        writeRegister(TMAG5273_INT_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_INT_CONFIG_1, mode);
     }
 
     return getError();
@@ -1287,12 +1303,12 @@ int8_t TMAG5273::setThresholdEn(bool enableInterruptResponse)
 ///     0X0 = !INT interrupt latched until clear by a primary
 ///           addressing the device
 ///     0X1 = !INT interrupt pulse for 10us
-///     TMAG5273_INT_CONFIG_1 - bit 5
+///     TMAG5273_REG_INT_CONFIG_1 - bit 5
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setIntPinState(bool interruptState)
 {
     uint16_t mode = 0;
-    mode = readRegister(TMAG5273_INT_CONFIG_1);
+    mode = readRegister(TMAG5273_REG_INT_CONFIG_1);
 
     // If-Else statement for writing values to the register, bit by bit
     if (interruptState == 0) // 0b0
@@ -1300,12 +1316,12 @@ int8_t TMAG5273::setIntPinState(bool interruptState)
         // Write 0 to bit 5 of the register value
         bitWrite(mode, 5, 0);
         // Writes mode to the CONFIG_2 register
-        writeRegister(TMAG5273_INT_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_INT_CONFIG_1, mode);
     }
     else if (interruptState == 1) // 0b1
     {
         bitWrite(mode, 5, 1);
-        writeRegister(TMAG5273_INT_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_INT_CONFIG_1, mode);
     }
 
     return getError();
@@ -1318,12 +1334,12 @@ int8_t TMAG5273::setIntPinState(bool interruptState)
 ///     0X2 = Interrupt through !INT except when I2C bus is busy
 ///     0X3 = Interrupt through SCL
 ///     0X4 = Interrupt through SCL except when I2C bus is busy
-///     TMAG5273_INT_CONFIG_1 - bit 4-2
+///     TMAG5273_REG_INT_CONFIG_1 - bit 4-2
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setInterruptMode(uint8_t configurationMode)
 {
     uint16_t mode = 0;
-    mode = readRegister(TMAG5273_INT_CONFIG_1);
+    mode = readRegister(TMAG5273_REG_INT_CONFIG_1);
 
     // If-Else statement for writing values to the register, bit by bit
     if ((configurationMode == 0X0) || (configurationMode == 0X1) || (configurationMode == 0X2) ||
@@ -1332,9 +1348,9 @@ int8_t TMAG5273::setInterruptMode(uint8_t configurationMode)
         // Shifts the bits over 4 to be concatenated into the new register
         uint8_t config = configurationMode << 2;
         // Make sure all of the INT mode bits are set to 0
-        mode = mode & 0XE3; 
+        mode = mode & 0XE3;
         mode = mode | config;
-        writeRegister(TMAG5273_INT_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_INT_CONFIG_1, mode);
     }
 
     return getError();
@@ -1344,12 +1360,12 @@ int8_t TMAG5273::setInterruptMode(uint8_t configurationMode)
 /// @param interruptPinEnable Value to choose the INT enable or disable
 ///     0X0 = !INT pin is enabled
 ///     0X1 = !INT pin is disabled (for wake-up and trigger functions)
-///     TMAG5273_INT_CONFIG_1 - bit 0
+///     TMAG5273_REG_INT_CONFIG_1 - bit 0
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setMaskInterrupt(bool interruptPinEnable)
 {
     uint16_t mode = 0;
-    mode = readRegister(TMAG5273_INT_CONFIG_1);
+    mode = readRegister(TMAG5273_REG_INT_CONFIG_1);
 
     // If-Else statement for writing values to the register, bit by bit
     if (interruptPinEnable == 0) // 0b0
@@ -1357,12 +1373,12 @@ int8_t TMAG5273::setMaskInterrupt(bool interruptPinEnable)
         // Write 0 to bit 1 of the register value
         bitWrite(mode, 0, 0);
         // Writes mode to the CONFIG_2 register
-        writeRegister(TMAG5273_INT_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_INT_CONFIG_1, mode);
     }
     else if (interruptPinEnable == 1) // 0b1
     {
         bitWrite(mode, 0, 1);
-        writeRegister(TMAG5273_INT_CONFIG_1, mode);
+        writeRegister(TMAG5273_REG_INT_CONFIG_1, mode);
     }
 
     return getError();
@@ -1377,15 +1393,15 @@ int8_t TMAG5273::setMaskInterrupt(bool interruptPinEnable)
 ///  enable the I2C Address Bit (see function setI2CAddressEN
 ///  for more information).
 /// @param address Address value to set device to
-///     TMAG5273_I2C_ADDRESS - bits 7-1
+///     TMAG5273_REG_I2C_ADDRESS - bits 7-1
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setI2CAddress(uint8_t address)
 {
     // Write the new address into the register and enable the register to be read
-    writeRegister(TMAG5273_I2C_ADDRESS, (address << 1) | 0x01);
+    writeRegister(TMAG5273_REG_I2C_ADDRESS, (address << 1) | 0x01);
     // Set the device address to the new address chosen
     _deviceAddress = address;
-    
+
     return getError();
 }
 
@@ -1398,20 +1414,20 @@ int8_t TMAG5273::setI2CAddress(uint8_t address)
 int8_t TMAG5273::setI2CAddressEN(bool addressEnable)
 {
     uint16_t addReg = 0;
-    addReg = readRegister(TMAG5273_I2C_ADDRESS);
+    addReg = readRegister(TMAG5273_REG_I2C_ADDRESS);
 
     // If-Else statement for writing values to the register, bit by bit
     if (addressEnable == 0)
     {
         // Write 0 to bit 0 of register
         bitWrite(addReg, 0, 0);
-        writeRegister(TMAG5273_I2C_ADDRESS, addReg);
+        writeRegister(TMAG5273_REG_I2C_ADDRESS, addReg);
     }
     else if (addressEnable == 1)
     {
         // Write 1 to bit 0 of register
         bitWrite(addReg, 0, 1);
-        writeRegister(TMAG5273_I2C_ADDRESS, addReg);
+        writeRegister(TMAG5273_REG_I2C_ADDRESS, addReg);
     }
 
     return getError();
@@ -1422,12 +1438,12 @@ int8_t TMAG5273::setI2CAddressEN(bool addressEnable)
 /// @param oscError Write '1' to clear the error flag
 ///     0X0 = No oscialltor error detected
 ///     0X1 = Oscillator error detected
-///     TMAG5273_DEVICE_STATUS - bit 3
+///     TMAG5273_REG_DEVICE_STATUS - bit 3
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setOscillatorError(bool oscError)
 {
     uint16_t deviceStatusReg = 0;
-    deviceStatusReg = readRegister(TMAG5273_DEVICE_STATUS);
+    deviceStatusReg = readRegister(TMAG5273_REG_DEVICE_STATUS);
 
     if (oscError == 1)
     {
@@ -1449,12 +1465,12 @@ int8_t TMAG5273::setOscillatorError(bool oscError)
 /// @brief Returns the I2C CRC byte to be sent
 ///     0X0 = CRC disabled
 ///     0X1 = CRC enabled
-///     TMAG5273_DEVICE_CONFIG_1 - bit 7
+///     TMAG5273_REG_DEVICE_CONFIG_1 - bit 7
 /// @return CRC disabled (0) or CRC enables (1)
 uint8_t TMAG5273::getCRCMode()
 {
     uint8_t getCRC = 0;
-    getCRC = readRegister(TMAG5273_DEVICE_CONFIG_1);
+    getCRC = readRegister(TMAG5273_REG_DEVICE_CONFIG_1);
 
     uint8_t mode = bitRead(getCRC, 7);
 
@@ -1466,12 +1482,12 @@ uint8_t TMAG5273::getCRCMode()
 ///     0X1 = 0.12%/deg C (NdBFe)
 ///     0X2 = Reserved
 ///     0X3 = 0.2%/deg C (Ceramic)
-///     TMAG5273_DEVICE_CONFIG_1 - bit 6-5
+///     TMAG5273_REG_DEVICE_CONFIG_1 - bit 6-5
 /// @return Temperature coefficient of the magnet
 uint8_t TMAG5273::getMagTemp()
 {
     uint8_t magTemp = 0;
-    magTemp = readRegister(TMAG5273_DEVICE_CONFIG_1);
+    magTemp = readRegister(TMAG5273_REG_DEVICE_CONFIG_1);
 
     // Fills with bit 5
     uint8_t tempReg5 = bitRead(magTemp, 5);
@@ -1508,12 +1524,12 @@ uint8_t TMAG5273::getMagTemp()
 ///     0X3 = 8x average, 1.6-kSPS (3-axes) or 4.4-kSPS (1 axis)
 ///     0X4 = 16x average, 0.8-kSPS (3-axes) or 2.4-kSPS (1 axis)
 ///     0X5 =  32x average, 0.4-kSPS (3-axes) or 1.2-kSPS (1 axis)
-///     TMAG5273_DEVICE_CONFIG_1 - bit 4-2
+///     TMAG5273_REG_DEVICE_CONFIG_1 - bit 4-2
 /// @return Value of the sampling average of the sensor data
 uint8_t TMAG5273::getConvAvg()
 {
     uint8_t convAv = 0;
-    convAv = readRegister(TMAG5273_DEVICE_CONFIG_1);
+    convAv = readRegister(TMAG5273_REG_DEVICE_CONFIG_1);
 
     uint8_t convBit2 = bitRead(convAv, 2);
     uint8_t convBit3 = bitRead(convAv, 3);
@@ -1551,40 +1567,38 @@ uint8_t TMAG5273::getConvAvg()
 
 /// @brief Returns the I2C read mode
 ///     0X0 = Standard I2C 3-byte read command
-///     0X1 = 1-byte I2C read command for 16bit sensor data and 
+///     0X1 = 1-byte I2C read command for 16bit sensor data and
 ///           conversion status
-///     0X2 = 1-byte I2C read command for 8bit sernsor MSB data and 
+///     0X2 = 1-byte I2C read command for 8bit sernsor MSB data and
 ///           conversion status
-///     TMAG5273_DEVICE_CONFIG_1 Bits 0-1
+///     TMAG5273_REG_DEVICE_CONFIG_1 Bits 0-1
 /// @return I2C read mode (0-2)
 uint8_t TMAG5273::getReadMode()
 {
     // Read the device config 1 register
-    uint8_t readModeReg = readRegister(TMAG5273_DEVICE_CONFIG_1);
+    uint8_t readModeReg = readRegister(TMAG5273_REG_DEVICE_CONFIG_1);
 
-    // Read the bits to determine the value to return 
+    // Read the bits to determine the value to return
     uint8_t readMode0 = bitRead(readModeReg, 0);
     uint8_t readMode1 = bitRead(readModeReg, 1);
 
-    if((readMode0 == 0) && (readMode1 == 0)) // 0b00
+    if ((readMode0 == 0) && (readMode1 == 0)) // 0b00
     {
-       return 0; 
+        return 0;
     }
-    else if((readMode0 == 1) && (readMode1 == 0)) // 0b01
+    else if ((readMode0 == 1) && (readMode1 == 0)) // 0b01
     {
         return 1;
     }
-    else if((readMode0 == 0) && (readMode1 == 1)) // 0b10
+    else if ((readMode0 == 0) && (readMode1 == 1)) // 0b10
     {
-        return 2; 
+        return 2;
     }
-    else 
+    else
     {
         return 0; // default
     }
-
 }
-
 
 /// @brief Returns the threshold for the interrupt function.
 ///     0X0 = Takes the 2's complement value of each x_THR_CONFIG
@@ -1592,12 +1606,12 @@ uint8_t TMAG5273::getReadMode()
 ///     0X1 = Takes the 7LSB bits of the x_THR_CONFIG register to create
 ///      two opposite magnetic thresholds (one north, and another south)
 ///      of equal magnitude
-///     TMAG5273_DEVICE_CONFIG_2 - bit 7-5
+///     TMAG5273_REG_DEVICE_CONFIG_2 - bit 7-5
 /// @return Threshold for the interrupt function (0X0 - 0X1)
 uint8_t TMAG5273::getIntThreshold()
 {
     uint8_t interruptThreshold = 0;
-    interruptThreshold = readRegister(TMAG5273_DEVICE_CONFIG_2);
+    interruptThreshold = readRegister(TMAG5273_REG_DEVICE_CONFIG_2);
 
     uint8_t interruptThreshold5 = bitRead(interruptThreshold, 5);
     uint8_t interruptThreshold6 = bitRead(interruptThreshold, 6);
@@ -1623,12 +1637,12 @@ uint8_t TMAG5273::getIntThreshold()
 ///  or low noise mode.
 ///     0X0 = Low active current mode
 ///     0X1 = Low noise mode
-///     TMAG5273_DEVICE_CONFIG_2 - bit 4
+///     TMAG5273_REG_DEVICE_CONFIG_2 - bit 4
 /// @return Low power (0) or low noise (1) mode
 uint8_t TMAG5273::getLowPower()
 {
     uint8_t lowPowerMode = 0;
-    lowPowerMode = readRegister(TMAG5273_DEVICE_CONFIG_2);
+    lowPowerMode = readRegister(TMAG5273_REG_DEVICE_CONFIG_2);
 
     uint8_t lowPowerModeBit = bitRead(lowPowerMode, 4);
 
@@ -1638,12 +1652,12 @@ uint8_t TMAG5273::getLowPower()
 /// @brief Returns if the I2C glitch filter is on or off
 ///     0x0 = Glitch filter ON
 ///     0X0 = Glitch filter OFF
-///     TMAG5273_DEVICE_CONFIG_2 - bit 3
+///     TMAG5273_REG_DEVICE_CONFIG_2 - bit 3
 /// @return I2C filter ON (0) or OFF (1)
 uint8_t TMAG5273::getGlitchFiler()
 {
     uint8_t glitchMode = 0;
-    glitchMode = readRegister(TMAG5273_DEVICE_CONFIG_2);
+    glitchMode = readRegister(TMAG5273_REG_DEVICE_CONFIG_2);
 
     uint8_t glitchModeBit = bitRead(glitchMode, 3);
 
@@ -1657,12 +1671,12 @@ uint8_t TMAG5273::getGlitchFiler()
 ///  by Mode' mentioned in OPERATING_MODE.
 ///     0X0 = Conversion Start at I2C Command Bits, DEFAULT
 ///     0X1 = Conversion starts through trigger signal at !INT pin
-///     TMAG5273_DEVICE_CONFIG_2 - bit 2
+///     TMAG5273_REG_DEVICE_CONFIG_2 - bit 2
 /// @return Condition that initiates conversion thru I2C or INT
 uint8_t TMAG5273::getTriggerMode()
 {
     uint8_t triggerMode = 0;
-    triggerMode = readRegister(TMAG5273_DEVICE_CONFIG_2);
+    triggerMode = readRegister(TMAG5273_REG_DEVICE_CONFIG_2);
 
     uint8_t triggerModeBit = bitRead(triggerMode, 2);
 
@@ -1674,12 +1688,12 @@ uint8_t TMAG5273::getTriggerMode()
 ///     0X1 = Sleep mode
 ///     0X2 = Continuous measure mode
 ///     0X3 = Wake-up and sleep mode (W&S Mode)
-///     TMAG5273_DEVICE_CONFIG_2 - bit 1-0
+///     TMAG5273_REG_DEVICE_CONFIG_2 - bit 1-0
 /// @return Operating mode: stand-by, sleep, continuous, or wake-up and sleep
 uint8_t TMAG5273::getOperatingMode()
 {
     uint8_t opMode = 0;
-    opMode = readRegister(TMAG5273_DEVICE_CONFIG_2);
+    opMode = readRegister(TMAG5273_REG_DEVICE_CONFIG_2);
 
     uint8_t opMode0 = bitRead(opMode, 0);
     uint8_t opMode1 = bitRead(opMode, 1);
@@ -1721,12 +1735,12 @@ uint8_t TMAG5273::getOperatingMode()
 ///     0X9 = YXY Channel Enabled
 ///     0XA = YZY Channel Enabled
 ///     0XB = XZX Channel Enabled
-///     TMAG5273_SENSOR_CONFIG_1 - bit 7-4
+///     TMAG5273_REG_SENSOR_CONFIG_1 - bit 7-4
 /// @return Code for the magnetic channel axis being read
 uint8_t TMAG5273::getMagneticChannel()
 {
     uint8_t magChannel = 0;
-    magChannel = readRegister(TMAG5273_SENSOR_CONFIG_1);
+    magChannel = readRegister(TMAG5273_REG_SENSOR_CONFIG_1);
 
     uint8_t magMode4 = bitRead(magChannel, 4);
     uint8_t magMode5 = bitRead(magChannel, 5);
@@ -1802,12 +1816,12 @@ uint8_t TMAG5273::getMagneticChannel()
 ///     0XA = 2000ms
 ///     0XB = 5000ms
 ///     0XC = 20000ms
-///     TMAG5273_SENSOR_CONFIG_1 - bit 3-0
+///     TMAG5273_REG_SENSOR_CONFIG_1 - bit 3-0
 /// @return Code for the time spent in low power mode between conversions
 uint8_t TMAG5273::getSleeptime()
 {
     uint8_t sleepReg = 0;
-    sleepReg = readRegister(TMAG5273_SENSOR_CONFIG_1);
+    sleepReg = readRegister(TMAG5273_REG_SENSOR_CONFIG_1);
 
     uint8_t sleep0 = bitRead(sleepReg, 0);
     uint8_t sleep1 = bitRead(sleepReg, 1);
@@ -1876,12 +1890,12 @@ uint8_t TMAG5273::getSleeptime()
 ///  ignored when THR_HYST > 001b.
 ///     0X0 = sets interrupt for field above the threshold
 ///     0X1 = sets interrupt for field below the threshold
-///     TMAG5273_SENSOR_CONFIG_2 - bit 5
+///     TMAG5273_REG_SENSOR_CONFIG_2 - bit 5
 /// @return Direction of threshold check - 0 or 1
 uint8_t TMAG5273::getMagDir()
 {
     uint8_t magDirectionReg = 0;
-    magDirectionReg = readRegister(TMAG5273_SENSOR_CONFIG_2);
+    magDirectionReg = readRegister(TMAG5273_REG_SENSOR_CONFIG_2);
 
     uint8_t magDirection5 = bitRead(magDirectionReg, 5);
 
@@ -1892,51 +1906,51 @@ uint8_t TMAG5273::getMagDir()
 ///  entered in MAG_GAIN_CONFIG register
 ///     0X0 = 1st channel is selected for gain adjustment
 ///     0X1 = 2nd channel is selected for gain adjustment
-///     TMAG5273_SENSOR_CONFIG_2 - bit 4
+///     TMAG5273_REG_SENSOR_CONFIG_2 - bit 4
 /// @return First (0) or Second (0) channel selected for gain adjustment
 uint8_t TMAG5273::getMagnitudeChannelSelect()
 {
     uint8_t magGainReg = 0;
-    magGainReg = readRegister(TMAG5273_SENSOR_CONFIG_2);
+    magGainReg = readRegister(TMAG5273_REG_SENSOR_CONFIG_2);
 
     uint8_t magGain4 = bitRead(magGainReg, 4);
 
     return magGain4;
 }
 
-/// @brief This function returns an 8-bit gain value determined by a 
+/// @brief This function returns an 8-bit gain value determined by a
 ///  primary to adjust a Hall axis gain. The particular axis is selected
 ///  based off the settings of MAG_GAIN_CH and ANGLE_EN register bits.
-///  The binary 8-bit input is interpreted as a fracitonal value between 
+///  The binary 8-bit input is interpreted as a fracitonal value between
 ///  0 and 1 based off the formula 'user entered value in decimal/256.'
-///  Gain value of 0 is interpreted by the device as 1. 
-///     TMAG5273_MAG_GAIN_CONFIG
-/// @return 8-bit gain value 
+///  Gain value of 0 is interpreted by the device as 1.
+///     TMAG5273_REG_MAG_GAIN_CONFIG
+/// @return 8-bit gain value
 uint8_t TMAG5273::getMagneticGain()
 {
     uint8_t magneticGainReg = 0;
-    magneticGainReg = readRegister(TMAG5273_MAG_GAIN_CONFIG);
+    magneticGainReg = readRegister(TMAG5273_REG_MAG_GAIN_CONFIG);
 
-    // Multiply by resolution 
-    float magneticGain = magneticGainReg*256;
+    // Multiply by resolution
+    float magneticGain = magneticGainReg * 256;
 
     return magneticGain;
 }
 
 /// @brief This function will return an 8-bit, 2's complement offset value
-///  determined by a primary to adjust the first axis offset value. The 
-///  range of possible offset valid entrees can be +/-128. The offset value 
+///  determined by a primary to adjust the first axis offset value. The
+///  range of possible offset valid entrees can be +/-128. The offset value
 ///  is calculated by multiplying bit resolution with the entered value.
-///     TMAG5273_MAG_OFFSET_CONFIG_1
+///     TMAG5273_REG_MAG_OFFSET_CONFIG_1
 /// @return Magnetic offset value for the first axis
 int8_t TMAG5273::getMagneticOffset1()
 {
     int8_t magOffset1 = 0;
-    magOffset1 = readRegister(TMAG5273_MAG_OFFSET_CONFIG_1);
+    magOffset1 = readRegister(TMAG5273_REG_MAG_OFFSET_CONFIG_1);
 
     uint8_t rangeVal = 0;
     uint8_t range = 0;
-    if(rangeVal == 0)
+    if (rangeVal == 0)
     {
         range = 40;
     }
@@ -1946,31 +1960,31 @@ int8_t TMAG5273::getMagneticOffset1()
     }
 
     // Divide by resoltuion (2^12 = 2048)
-    float offsetVal = (magOffset1*range)/2048;
+    float offsetVal = (magOffset1 * range) / 2048;
 
     return offsetVal;
 }
 
 /// @brief This function will return an 8-bit, 2's complement offset value
-///  determined by a primary to adjust the first axis offset value. The 
-///  range of possible offset valid entrees can be +/-128. The offset value 
+///  determined by a primary to adjust the first axis offset value. The
+///  range of possible offset valid entrees can be +/-128. The offset value
 ///  is calculated by multiplying bit resolution with the entered value.
-///     TMAG5273_MAG_OFFSET_CONFIG_2
-/// @return Magnetic offset value for the second axis 
+///     TMAG5273_REG_MAG_OFFSET_CONFIG_2
+/// @return Magnetic offset value for the second axis
 int8_t TMAG5273::getMagneticOffset2()
 {
     int8_t magOffset2 = 0;
-    magOffset2 = readRegister(TMAG5273_MAG_OFFSET_CONFIG_2);
+    magOffset2 = readRegister(TMAG5273_REG_MAG_OFFSET_CONFIG_2);
 
     // Choose the XY axis range
     uint8_t channelSelect = getAngleEn(); // 1, 2, or 3
     uint8_t rangeValXY = getXYAxisRange();
     uint8_t rangeXY = 0;
-    if(rangeValXY == 0)
+    if (rangeValXY == 0)
     {
         rangeXY = 40;
     }
-    else if(rangeValXY == 1)
+    else if (rangeValXY == 1)
     {
         rangeXY = 80;
     }
@@ -1978,11 +1992,11 @@ int8_t TMAG5273::getMagneticOffset2()
     // Choose the Z axis range
     uint8_t rangeValZ = getZAxisRange();
     uint8_t rangeZ = 0;
-    if(rangeValZ == 0)
+    if (rangeValZ == 0)
     {
         rangeZ = 40;
     }
-    else if(rangeValZ == 1)
+    else if (rangeValZ == 1)
     {
         rangeZ = 80;
     }
@@ -1991,15 +2005,15 @@ int8_t TMAG5273::getMagneticOffset2()
     uint8_t range;
 
     // Select Channel
-    if(channelSelect == 1) // Y
+    if (channelSelect == 1) // Y
     {
         range = rangeXY; // 40 or 80
     }
-    else if(channelSelect == 2) // Z 
+    else if (channelSelect == 2) // Z
     {
         range = rangeZ; // 40 or 80
     }
-    else if(channelSelect == 3) // Z
+    else if (channelSelect == 3) // Z
     {
         range = rangeZ; // 40 or 80
     }
@@ -2010,7 +2024,7 @@ int8_t TMAG5273::getMagneticOffset2()
     }
 
     // Use resolution equation in datasheet
-    float offsetVal = (magOffset2*range)/2048; // 2^11 = 2048
+    float offsetVal = (magOffset2 * range) / 2048; // 2^11 = 2048
 
     return offsetVal;
 }
@@ -2022,12 +2036,12 @@ int8_t TMAG5273::getMagneticOffset2()
 ///     0X1 = X 1st, Y 2nd
 ///     0X2 = Y 1st, Z 2nd
 ///     0X3 = X 1st, Z 2nd
-///     TMAG5273_SENSOR_CONFIG_2 - bit 3-2
+///     TMAG5273_REG_SENSOR_CONFIG_2 - bit 3-2
 /// @return Angle calculation and associated channel order
 uint8_t TMAG5273::getAngleEn()
 {
     uint8_t angleReg = 0;
-    angleReg = readRegister(TMAG5273_SENSOR_CONFIG_2);
+    angleReg = readRegister(TMAG5273_REG_SENSOR_CONFIG_2);
 
     uint8_t angleDir2 = bitRead(angleReg, 2);
     uint8_t angleDir3 = bitRead(angleReg, 3);
@@ -2060,12 +2074,12 @@ uint8_t TMAG5273::getAngleEn()
 ///  two following options:
 ///     0X0 = ±40mT, DEFAULT
 ///     0X1 = ±80mT
-///     TMAG5273_SENSOR_CONFIG_2 - bit 1
+///     TMAG5273_REG_SENSOR_CONFIG_2 - bit 1
 /// @return X and Y axes magnetic range (0 or 1)
 uint8_t TMAG5273::getXYAxisRange()
 {
     uint8_t XYrangeReg = 0;
-    XYrangeReg = readRegister(TMAG5273_SENSOR_CONFIG_2);
+    XYrangeReg = readRegister(TMAG5273_REG_SENSOR_CONFIG_2);
 
     uint8_t axisRange = bitRead(XYrangeReg, 1);
 
@@ -2085,12 +2099,12 @@ uint8_t TMAG5273::getXYAxisRange()
 ///  two following options:
 ///     0X0 = ±40mT, DEFAULT
 ///     0X1 = ±80mT
-///     TMAG5273_SENSOR_CONFIG_2 - bit 0
+///     TMAG5273_REG_SENSOR_CONFIG_2 - bit 0
 /// @return Z axis magnetic range from ±40mT or ±80mT
 uint8_t TMAG5273::getZAxisRange()
 {
     uint8_t ZrangeReg = 0;
-    ZrangeReg = readRegister(TMAG5273_SENSOR_CONFIG_2);
+    ZrangeReg = readRegister(TMAG5273_REG_SENSOR_CONFIG_2);
 
     uint8_t ZaxisRange = bitRead(ZrangeReg, 0);
 
@@ -2110,16 +2124,16 @@ uint8_t TMAG5273::getZAxisRange()
 ///  limit check. The range of possible threshold entrees can be +/-128.
 ///  The thershold value in mT is calculated as (40(1+X_Y_RANGE)/128)*X_THR_CONFIG.
 ///  Default 0h means no threshold comparison.
-///     TMAG5273_X_THR_CONFIG - bits 7-0
+///     TMAG5273_REG_X_THR_CONFIG - bits 7-0
 /// @return Returns the X threshold code for limit check
 float TMAG5273::getXThreshold()
 {
     int8_t xThresh = 0;
-    xThresh = readRegister(TMAG5273_X_THR_CONFIG);
+    xThresh = readRegister(TMAG5273_REG_X_THR_CONFIG);
     uint8_t range = getXYAxisRange();
-    
-	float thresh = (float)(40*(1+range))/128*xThresh;
-								  
+
+    float thresh = (float)(40 * (1 + range)) / 128 * xThresh;
+
     return thresh; // mT
 }
 
@@ -2127,15 +2141,15 @@ float TMAG5273::getXThreshold()
 ///  limit check. The range of possible threshold entrees can be +/-128.
 ///  The thershold value in mT is calculated as (40(1+X_Y_RANGE)/128)*Y_THR_CONFIG.
 ///  Default 0h means no threshold comparison.
-///     TMAG5273_Y_THR_CONFIG - bits 7-0
+///     TMAG5273_REG_Y_THR_CONFIG - bits 7-0
 /// @return Returns the Y threshold code for limit check
 float TMAG5273::getYThreshold()
 {
     int8_t yThresh = 0;
-    yThresh = readRegister(TMAG5273_Y_THR_CONFIG);
+    yThresh = readRegister(TMAG5273_REG_Y_THR_CONFIG);
     uint8_t range = getXYAxisRange();
-    
-	float thresh = (float)(40*(1+range))/128*yThresh;
+
+    float thresh = (float)(40 * (1 + range)) / 128 * yThresh;
 
     return thresh; // mT
 }
@@ -2144,15 +2158,15 @@ float TMAG5273::getYThreshold()
 ///  limit check. The range of possible threshold entrees can be +/-128.
 ///  The thershold value in mT is calculated as (40(1+Z_RANGE)/128)*Z_THR_CONFIG.
 ///  Default 0h means no threshold comparison.
-///     TMAG5273_Z_THR_CONFIG - bits 7-0
+///     TMAG5273_REG_Z_THR_CONFIG - bits 7-0
 /// @return Returns the Z threshold code for limit check
 float TMAG5273::getZThreshold()
 {
     int8_t zThresh = 0;
-    zThresh = readRegister(TMAG5273_Z_THR_CONFIG);
+    zThresh = readRegister(TMAG5273_REG_Z_THR_CONFIG);
     uint8_t range = getZAxisRange();
-    
-	float thresh = (float)(40*(1+range))/128*zThresh;
+
+    float thresh = (float)(40 * (1 + range)) / 128 * zThresh;
 
     return thresh; // mT
 }
@@ -2161,12 +2175,12 @@ float TMAG5273::getZThreshold()
 ///  The valid temperature threshold values are -41C to 170C with the
 ///  threshold codes for -41C = 0x1A, and 170C = 0X34. Resolution is
 ///  8 degree C/LSB. Default 0x0 means no threshold comparison.
-///     TMAG5273_T_CONFIG - bits 7-1
+///     TMAG5273_REG_T_CONFIG - bits 7-1
 /// @return Temperature threshold code entered by the user originally.
 float TMAG5273::getTemperatureThreshold()
 {
     int8_t tempThreshReg = 0;
-    tempThreshReg = readRegister(TMAG5273_T_CONFIG);
+    tempThreshReg = readRegister(TMAG5273_REG_T_CONFIG);
 
     // Value to hold
     int8_t tempThresh = 0;
@@ -2180,12 +2194,12 @@ float TMAG5273::getTemperatureThreshold()
 ///  acquisition of the temperature channel.
 ////    0x0 = Temp Channel Disabled
 ///     0x1 = Temp Channel Enabled
-///     TMAG5273_T_CONFIG - bit 0
+///     TMAG5273_REG_T_CONFIG - bit 0
 /// @return Enable bit that determines if temp channel is enabled or disabled
 uint8_t TMAG5273::getTemperatureEN()
 {
     uint8_t tempENreg = 0;
-    tempENreg = readRegister(TMAG5273_T_CONFIG);
+    tempENreg = readRegister(TMAG5273_REG_T_CONFIG);
 
     uint8_t tempEN = bitRead(tempENreg, 0);
 
@@ -2198,12 +2212,12 @@ uint8_t TMAG5273::getTemperatureEN()
 ///           conversions are complete
 ///     0X1 = Interrupt is asserted when the configured set of
 ///           conversions are complete
-///     TMAG5273_INT_CONFIG_1 - bit 7
+///     TMAG5273_REG_INT_CONFIG_1 - bit 7
 /// @return Interrupt responce bit for conversion complete.
 uint8_t TMAG5273::getInterruptResult()
 {
     uint8_t intRsltReg = 0;
-    intRsltReg = readRegister(TMAG5273_INT_CONFIG_1);
+    intRsltReg = readRegister(TMAG5273_REG_INT_CONFIG_1);
 
     uint8_t intRslt = bitRead(intRsltReg, 7);
 
@@ -2214,12 +2228,12 @@ uint8_t TMAG5273::getInterruptResult()
 ///  on a predefined threshold cross.
 ///     0X0 = Interrupt is NOT asserted when a threshold is crossed
 ///     0X1 = Interrupt is asserted when a threshold is crossed
-///     TMAG5273_INT_CONFIG_1 - bit 6
+///     TMAG5273_REG_INT_CONFIG_1 - bit 6
 /// @return Enable bit for if the interrupt is or is not asserted
 uint8_t TMAG5273::getThresholdEn()
 {
     uint8_t threshReg = 0;
-    threshReg = readRegister(TMAG5273_INT_CONFIG_1);
+    threshReg = readRegister(TMAG5273_REG_INT_CONFIG_1);
 
     uint8_t threshEnRslt = bitRead(threshReg, 6);
 
@@ -2230,12 +2244,12 @@ uint8_t TMAG5273::getThresholdEn()
 ///     0X0 = !INT interrupt latched until clear by a primary
 ///           addressing the device
 ///     0X1 = !INT interrupt pulse for 10us
-///     TMAG5273_INT_CONFIG_1 - bit 5
+///     TMAG5273_REG_INT_CONFIG_1 - bit 5
 /// @return Value if !INT interrupt is latched or pulsed
 uint8_t TMAG5273::getIntPinState()
 {
     uint8_t intStateReg = 0;
-    intStateReg = readRegister(TMAG5273_INT_CONFIG_1);
+    intStateReg = readRegister(TMAG5273_REG_INT_CONFIG_1);
 
     uint8_t intStateRslt = bitRead(intStateReg, 5);
 
@@ -2248,12 +2262,12 @@ uint8_t TMAG5273::getIntPinState()
 ///     0X2 = Interrupt through !INT except when I2C bus is busy
 ///     0X3 = Interrupt through SCL
 ///     0X4 = Interrupt through SCL except when I2C bus is busy
-///     TMAG5273_INT_CONFIG_1 - bit 4-2
+///     TMAG5273_REG_INT_CONFIG_1 - bit 4-2
 /// @return Configuration for the interrupt mode select
 uint8_t TMAG5273::getInterruptMode()
 {
     uint8_t intModeReg = 0;
-    intModeReg = readRegister(TMAG5273_INT_CONFIG_1);
+    intModeReg = readRegister(TMAG5273_REG_INT_CONFIG_1);
 
     uint8_t intCon2 = bitRead(intModeReg, 2);
     uint8_t intCon3 = bitRead(intModeReg, 3);
@@ -2294,12 +2308,12 @@ uint8_t TMAG5273::getInterruptMode()
 /// @brief Returns the Mask !INT pin when !INT is connected to GND
 ///     0X0 = !INT pin is enabled
 ///     0X1 = !INT pin is disabled (for wake-up and trigger functions)
-///     TMAG5273_INT_CONFIG_1 - bit 0
+///     TMAG5273_REG_INT_CONFIG_1 - bit 0
 /// @return !INT pin is enabled or disabled
 uint8_t TMAG5273::getMaskInt()
 {
     uint8_t maskIntReg = 0;
-    maskIntReg = readRegister(TMAG5273_INT_CONFIG_1);
+    maskIntReg = readRegister(TMAG5273_REG_INT_CONFIG_1);
 
     uint8_t maskInt = bitRead(maskIntReg, 0);
 
@@ -2307,12 +2321,12 @@ uint8_t TMAG5273::getMaskInt()
 }
 
 /// @brief Returns the rolling count of conversion data sets
-///      TMAG5273_CONV_STATUS - bit 7-5
+///      TMAG5273_REG_CONV_STATUS - bit 7-5
 /// @return Rolling count of conversion data sets
 uint8_t TMAG5273::getSetCount()
 {
     uint8_t convReg = 0;
-    convReg = readRegister(TMAG5273_CONV_STATUS);
+    convReg = readRegister(TMAG5273_REG_CONV_STATUS);
 
     // variable for count value to be held in
     uint8_t count = 0;
@@ -2326,12 +2340,12 @@ uint8_t TMAG5273::getSetCount()
 ///  on-reset. Bit is cleared when the host writes back '1'.
 ///     0X0 = No POR
 ///     0X1 = POR occured
-///     TMAG5273_CONV_STATUS - bit 4
+///     TMAG5273_REG_CONV_STATUS - bit 4
 /// @return Device is powered up or experienced POR.
 uint8_t TMAG5273::getPOR()
 {
     uint8_t convReg = 0;
-    convReg = readRegister(TMAG5273_CONV_STATUS);
+    convReg = readRegister(TMAG5273_REG_CONV_STATUS);
 
     uint8_t PORBit = bitRead(convReg, 4);
 
@@ -2344,12 +2358,12 @@ uint8_t TMAG5273::getPOR()
 ///  this bit status if VCC < 2.3V.
 ///     0X0 = no diag fail
 ///     0X1 = diag fail detected
-///     TMAG5273_CONV_STATUS - bit 1
+///     TMAG5273_REG_CONV_STATUS - bit 1
 /// @return  Detection of any internal diagnostics failure
 uint8_t TMAG5273::getDiagStatus()
 {
     uint8_t convReg = 0;
-    convReg = readRegister(TMAG5273_CONV_STATUS);
+    convReg = readRegister(TMAG5273_REG_CONV_STATUS);
 
     uint8_t diagBit = bitRead(convReg, 1);
 
@@ -2360,12 +2374,12 @@ uint8_t TMAG5273::getDiagStatus()
 ///  to be read.
 ///     0X0 = Conversion data not complete
 ///     0X1 = Converstion data complete
-///     TMAG5273_CONV_STATUS - bit 0
+///     TMAG5273_REG_CONV_STATUS - bit 0
 /// @return Conversion data buffer status
 uint8_t TMAG5273::getResultStatus()
 {
     uint8_t convReg = 0;
-    convReg = readRegister(TMAG5273_CONV_STATUS);
+    convReg = readRegister(TMAG5273_REG_CONV_STATUS);
 
     uint8_t resultBit = bitRead(convReg, 0);
 
@@ -2377,12 +2391,12 @@ uint8_t TMAG5273::getResultStatus()
 ///  up. Change these bits to a new setting if a new I2C address is
 ///  required (at each power cycle these bits must be written again
 ///  to avoid going back to default factory address).
-///     TMAG5273_I2C_ADDRESS - bits 7-1
+///     TMAG5273_REG_I2C_ADDRESS - bits 7-1
 /// @return I2C address of the device
 uint8_t TMAG5273::getI2CAddress()
 {
     uint8_t addressReg = 0;
-    uint8_t address = readRegister(TMAG5273_I2C_ADDRESS);
+    uint8_t address = readRegister(TMAG5273_REG_I2C_ADDRESS);
 
     addressReg = address >> 1; // Shift off the last bit to return the first 7
 
@@ -2400,7 +2414,7 @@ uint8_t TMAG5273::getI2CAddress()
 uint8_t TMAG5273::getDeviceID()
 {
     uint8_t deviceReg = 0;
-    deviceReg = readRegister(TMAG5273_DEVICE_ID);
+    deviceReg = readRegister(TMAG5273_REG_DEVICE_ID);
 
     uint8_t reg1 = bitRead(deviceReg, 0);
     uint8_t reg2 = bitRead(deviceReg, 1);
@@ -2424,20 +2438,17 @@ uint8_t TMAG5273::getDeviceID()
 ///  registers, LSB and MSB.
 ///     MANUFACTURER_ID_LSB
 ///     MANUFACTURER_ID_MSB
-/// @return 8-Bit Manufacturer ID
+/// @return 16-Bit Manufacturer ID
 uint16_t TMAG5273::getManufacturerID()
 {
-    uint8_t idRegLSB = 0;
-    uint8_t idRegMSB = 0;
-    idRegLSB = readRegister(TMAG5273_MANUFACTURER_ID_LSB);
-    idRegMSB = readRegister(TMAG5273_MANUFACTURER_ID_MSB);
+    uint16_t deviceIDReg = 0;
+    uint8_t databuffer[2];
 
-    // Variable to store full manufacturer ID data
-    uint16_t deviceID = 0;
-    // Combines both into one variable with MSB shifted
-    deviceID = (idRegMSB << 8) | (idRegLSB);
+    readRegisters(TMAG5273_REG_MANUFACTURER_ID_LSB, databuffer, 2);
 
-    return deviceID;
+    deviceIDReg = (databuffer[0] << 8) | (databuffer[1]);
+
+    return deviceIDReg;
 }
 
 /// @brief This function iundicates the level that the device is
@@ -2449,142 +2460,45 @@ uint16_t TMAG5273::getManufacturerID()
 uint8_t TMAG5273::getInterruptPinStatus()
 {
     uint8_t deviceStatusReg = 0;
-    deviceStatusReg = readRegister(TMAG5273_DEVICE_STATUS);
+    deviceStatusReg = readRegister(TMAG5273_REG_DEVICE_STATUS);
     // Reads back the bit we want to investigate
     uint8_t intPinStatus = bitRead(deviceStatusReg, 4);
 
     return intPinStatus; // Returns a 0 or 1 if low or high, respectively
 }
 
-/// @brief This function indicates if there is an oscillator error
-///  detected.
-/// @return Returns the following:
-///     0X0 = No oscillator error detected
-///     0X1 = Oscillator error detected
-uint8_t TMAG5273::getOscillatorError()
-{
-    uint8_t deviceStatusReg = readRegister(TMAG5273_DEVICE_STATUS);
-    uint8_t oscillatorError = bitRead(deviceStatusReg, 3);
-
-    if (oscillatorError == 0)
-    {
-        return 0;
-    }
-    else if (oscillatorError == 1)
-    {
-        return 1;
-    }
-
-    return 0;
-}
-
-/// @brief This function indicates if there is an INT pin error detected
-/// @return Returns the following:
-///     0X0 = No !INT pin error detected
-///     0X1 = !INT pin error detected
-uint8_t TMAG5273::getIntPinError()
-{
-    uint8_t deviceStatusReg = readRegister(TMAG5273_DEVICE_STATUS);
-    uint8_t intPinError = bitRead(deviceStatusReg, 2);
-
-    if (intPinError == 0)
-    {
-        return 0;
-    }
-    else if (intPinError == 1)
-    {
-        return 1;
-    }
-
-    return 0;
-}
-
-/// @brief This function indicates if there is an OTP CRC error that
-///  is detected.
-/// @return Returns the following:
-///     0X0 = No OTP CRC error detected
-///     0X1 = OTP CRC error detected
-uint8_t TMAG5273::getOtpCrcError()
-{
-    uint8_t deviceStatusReg = readRegister(TMAG5273_DEVICE_STATUS);
-    uint8_t otpCrcError = bitRead(deviceStatusReg, 1);
-
-    if (otpCrcError == 0)
-    {
-        return 0;
-    }
-    else if (otpCrcError == 1)
-    {
-        return 1;
-    }
-
-    return 0;
-}
-
-/// @brief This function indicates if VCC undervoltage was detected.
-///  Ignore this bit status if VCC < 2.3V.
-/// @return Returns the following:
-///     0X0 = No VCC UV detected
-///     0X1 = VCC UV detected
-uint8_t TMAG5273::getUndervoltageError()
-{
-    uint8_t deviceStatusReg = readRegister(TMAG5273_DEVICE_STATUS);
-    uint8_t undervoltageError = bitRead(deviceStatusReg, 0);
-
-    if (undervoltageError == 0)
-    {
-        return 0;
-    }
-    else if (undervoltageError == 1)
-    {
-        return 1;
-    }
-
-    return 0;
-}
-
-/// @brief This function returns an error code as per the error.
+/// @brief This function returns the device status register as its
+///  raw hex value. This value can be taken and compared to the main
+///  register as seen in the datasheet.
 ///  The errors include an oscillator error, INT pin error detected,
 ///  OTP CRC errors, or undervoltage resistors.
-/// @return The errors as listed below:
-///  - 0: No Error
-///  - 1: Oscillator Error
-///  - 2: INT Pin Error
-///  - 3: OTP CRC Error
-///  - 4: Undervoltage Error (VCC < 2.3V)
+///     TMAG5273_REG_DEVICE_STATUS
+/// @return Device Status Regsiter as a raw value.
 uint8_t TMAG5273::getDeviceStatus()
 {
-    // Checks the flag from each bit in the register for errors
-    // Returns the error code for which register had the error
-    if (getOscillatorError() == 1)
-    {
-        return 1;
-    }
-    else if (getIntPinError() == 1)
-    {
-        return 2;
-    }
-    else if (getOtpCrcError() == 1)
-    {
-        return 3;
-    }
-    else if (getUndervoltageError() == 1)
-    {
-        return 4;
-    }
-    else
-    {
-        return 0;
-    }
+    // Check for undervoltage, OTP CRC, Int Pin, and Oscillator errors
+    uint8_t deviceStatusReg = readRegister(TMAG5273_REG_DEVICE_STATUS);
+
+    return deviceStatusReg;
 }
 
 /// @brief This function will return the error code, if there is any
 ///  at the time when the function is called.
+///  If any of the Error pins are raised to 1 then there is an error.
+///  For more information on the specific error, checkout the
+///  getDeviceStatus() function and compare to the datasheet.
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::getError()
 {
-    // Returns -1 if any error. Use getDeviceStatus() for more information on which error
-    if (getDeviceStatus() != 0)
+    // Pull in the device status register to compare to the error codes
+    uint8_t statusReg = getDeviceStatus();
+    uint8_t undervoltageError = bitRead(statusReg, 0);
+    uint8_t otpCrcError = bitRead(statusReg, 1);
+    uint8_t intPinError = bitRead(statusReg, 2);
+    uint8_t oscillatorError = bitRead(statusReg, 3);
+
+    // If there is any error with the error codes, return -1. Otherwise, success and return 0
+    if ((undervoltageError != 0) && (otpCrcError != 0) && (intPinError != 0) && (oscillatorError != 0))
     {
         return -1;
     }
@@ -2604,19 +2518,15 @@ int8_t TMAG5273::getError()
 /// @return T-Channel data conversion results
 float TMAG5273::getTemp()
 {
-    int8_t tempLSB = 0;
-    int8_t tempMSB = 0;
-    // Read in the LSB Register
-    tempLSB = readRegister(TMAG5273_T_LSB_RESULT);
-    // Read in the MSB Register
-    tempMSB = readRegister(TMAG5273_T_MSB_RESULT);
-
     // Variable to store full temperature value
     int16_t temp = 0;
+    uint8_t databuffer[2];
+    // Read in the MSB and LSB registers
+    readRegisters(TMAG5273_REG_T_MSB_RESULT, databuffer, 2);
     // Combines the two in one register where the MSB is shifted to the correct location
-    temp = (tempMSB << 8) | (tempLSB);
+    temp = (databuffer[0] << 8) | (databuffer[1]);
     // Formula for correct output value
-    float tempOut = TSENSE_T0 + ((temp - TADC_T0) / (TADC_RES));
+    float tempOut = TMAG5273_TSENSE_T0 + (((float)temp - TMAG5273_TADC_T0) / (TMAG5273_TADC_RES));
 
     return tempOut;
 }
@@ -2627,8 +2537,8 @@ float TMAG5273::getTemp()
 /// @return X-Channel data conversion results
 float TMAG5273::getXData()
 {
-    int8_t xLSB = readRegister(TMAG5273_X_LSB_RESULT);
-    int8_t xMSB = readRegister(TMAG5273_X_MSB_RESULT);
+    int8_t xLSB = readRegister(TMAG5273_REG_X_LSB_RESULT);
+    int8_t xMSB = readRegister(TMAG5273_REG_X_MSB_RESULT);
 
     // Variable to store full X data
     int16_t xData = 0;
@@ -2638,18 +2548,18 @@ float TMAG5273::getXData()
     // Reads to see if the range is set to 40mT or 80mT
     uint8_t rangeValXY = getXYAxisRange();
     uint8_t range = 0;
-    if(rangeValXY == 0)
+    if (rangeValXY == 0)
     {
         range = 40;
     }
-    else if(rangeValXY == 1)
+    else if (rangeValXY == 1)
     {
         range = 80;
     }
 
-    // 16-bit data format equation 
+    // 16-bit data format equation
     float div = 32768;
-    float xOut = (range * xData) / div;
+    float xOut = -(range * xData) / div;
 
     return xOut;
 }
@@ -2663,8 +2573,8 @@ float TMAG5273::getYData()
     int8_t yLSB = 0;
     int8_t yMSB = 0;
 
-    yLSB = readRegister(TMAG5273_Y_LSB_RESULT);
-    yMSB = readRegister(TMAG5273_Y_MSB_RESULT);
+    yLSB = readRegister(TMAG5273_REG_Y_LSB_RESULT);
+    yMSB = readRegister(TMAG5273_REG_Y_MSB_RESULT);
 
     // Variable to store full Y data
     int16_t yData = 0;
@@ -2673,16 +2583,16 @@ float TMAG5273::getYData()
     // Reads to see if the range is set to 40mT or 80mT
     uint8_t rangeValXY = getXYAxisRange();
     uint8_t range = 0;
-    if(rangeValXY == 0)
+    if (rangeValXY == 0)
     {
         range = 40;
     }
-    else if(rangeValXY == 1)
+    else if (rangeValXY == 1)
     {
         range = 80;
     }
-    
-    // 16-bit data format equation 
+
+    // 16-bit data format equation
     float div = 32768;
     float yOut = (range * yData) / div;
 
@@ -2698,8 +2608,8 @@ float TMAG5273::getZData()
     int8_t zLSB = 0;
     int8_t zMSB = 0;
 
-    zLSB = readRegister(TMAG5273_Z_LSB_RESULT);
-    zMSB = readRegister(TMAG5273_Z_MSB_RESULT);
+    zLSB = readRegister(TMAG5273_REG_Z_LSB_RESULT);
+    zMSB = readRegister(TMAG5273_REG_Z_MSB_RESULT);
 
     // Variable to store full X data
     int16_t zData = 0;
@@ -2709,17 +2619,17 @@ float TMAG5273::getZData()
     // Reads to see if the range is set to 40mT or 80mT
     uint8_t rangeValZ = getZAxisRange();
     uint8_t range = 0;
-    if(rangeValZ == 0)
+    if (rangeValZ == 0)
     {
         range = 40;
     }
-    else if(rangeValZ == 1)
+    else if (rangeValZ == 1)
     {
         range = 80;
     }
 
     // div = (2^16) / 2    (as per the datasheet equation 10)
-    // 16-bit data format equation 
+    // 16-bit data format equation
     float div = 32768;
     float zOut = (range * zData) / div;
 
@@ -2730,16 +2640,16 @@ float TMAG5273::getZData()
 ///  displayed from 0 to 360 degree in 13 LSB bits after combining the
 ///  MSB and LSB bits. The 4 LSB bits allocated for fraction of an angle
 ///  in the format (xxx/16).
-///     TMAG5273_ANGLE_RESULT_MSB
-///     TMAG5273_ANGLE_RESULT_LSB
+///     TMAG5273_REG_ANGLE_RESULT_MSB
+///     TMAG5273_REG_ANGLE_RESULT_LSB
 /// @return Angle measurement result in degrees (float value)
 float TMAG5273::getAngleResult()
 {
     int8_t angleLSB = 0;
     int8_t angleMSB = 0;
 
-    angleLSB = readRegister(TMAG5273_ANGLE_RESULT_LSB);
-    angleMSB = readRegister(TMAG5273_ANGLE_RESULT_MSB);
+    angleLSB = readRegister(TMAG5273_REG_ANGLE_RESULT_LSB);
+    angleMSB = readRegister(TMAG5273_REG_ANGLE_RESULT_MSB);
 
     // Variable to hold the full angle MSB and LSB registers
     int16_t angleReg = 0;
@@ -2775,9 +2685,7 @@ float TMAG5273::getMagnitudeResult()
     uint16_t magReg = 0;
 
     // Reads in the magnitude result register
-    magReg = readRegister(TMAG5273_MAGNITUDE_RESULT);
+    magReg = readRegister(TMAG5273_REG_MAGNITUDE_RESULT);
 
     return magReg;
 }
-
-
