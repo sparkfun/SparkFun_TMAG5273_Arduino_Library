@@ -25,16 +25,14 @@ void setup()
   Wire.begin();
   // Start serial communication at 115200 baud
   Serial.begin(115200);
-  // Set clock speed to be the fastest for better communication
-  Wire.setClock(1000000);
 
   // Configure Interrupt Pin
-  pinMode(intPin, OUTPUT);
+  pinMode(intPin, INPUT);
   // Attach interrupt to pin 4 as a digital, falling pin
   attachInterrupt(digitalPinToInterrupt(intPin), isr1, CHANGE);
 
   // Begin example of the magnetic sensor code (and add whitespace for easy reading)
-  Serial.println("TMAG5273 Example 4: Interrupts");
+  Serial.println("TMAG5273 Example 2: Interrupts");
   Serial.println("");
   // If begin is successful (0), then start example
   if (sensor.begin(i2cAddress, Wire) == true)
@@ -48,16 +46,16 @@ void setup()
   }
 
   // Set interrupt through !INT
-  sensor.setInterruptMode(INTERRUPT_THROUGH_INT);
+  sensor.setInterruptMode(TMAG5273_INTERRUPT_THROUGH_INT);
 
   // Set the !INT pin state - pulse for 10us
-  sensor.setIntPinState(1);
+  sensor.setIntPinState(true);
 
   // Enable the interrupt response for the thresholds
-  sensor.setThresholdEn(1);
+  sensor.setThresholdEn(true);
 
-  int pinStatus = sensor.getInterruptPinStatus();
-  pinMode(4, INPUT);
+  //int pinStatus = sensor.getInterruptPinStatus();
+  pinMode(intPin, INPUT);
 
   // Set X, Y, Z, and T Thresholds for interrupt to be triggered
   sensor.setXThreshold(5);            // mT
@@ -84,7 +82,7 @@ void loop()
 
     int xThresh = sensor.getXThreshold();
     Serial.print("X Threshold: ");
-    Serial.println(zxThresh);
+    Serial.println(xThresh);
 
     if (sensor.getMagneticChannel() != 0)  // Checks if mag channels are on - turns on in setup
     {
@@ -100,6 +98,8 @@ void loop()
       Serial.print(", ");
       Serial.print(magZ);
       Serial.println(") mT");
+      Serial.print(temp);
+      Serial.println(" °C");
     } 
     else 
     {

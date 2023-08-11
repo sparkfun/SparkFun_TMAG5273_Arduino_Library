@@ -11,11 +11,9 @@ void setup()
   Wire.begin();
   // Start serial communication at 115200 baud
   Serial.begin(115200);   
-  // Set clock speed to be the fastest for better communication 
-  Wire.setClock(1000000);
 
   // Begin example of the magnetic sensor code (and add whitespace for easy reading)
-  Serial.println("TMAG5273 Example 6: I2C Settings - Address Change");
+  Serial.println("TMAG5273 Example 4: I2C Settings - Address Change");
   Serial.println("");
   
   // If begin is successful (1), then start example
@@ -29,14 +27,13 @@ void setup()
    
     while(1); // Runs forever
   }
-  
-  // Race Case
-  delay(1000);
 
   Serial.print("Original Address: ");
   Serial.println(sensor.getI2CAddress(), HEX);
 
-  // Change I2C Address - can be any 7-bit value (bits 1-7)
+  // Change I2C Address - must be 7-bits (bits 1-7)
+  // NOTE: The I2C address will reset back to default (0x22) after a power cycle. 
+  // Running other examples without a power cycle will fail due to the I2C address being different. 
   int updatedAddress = 0x23;
 
   // Set the I2C Address  

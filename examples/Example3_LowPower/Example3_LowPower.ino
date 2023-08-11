@@ -4,7 +4,7 @@
 TMAG5273 sensor; // Initialize hall-effect sensor
 
 // I2C default address
-uint8_t i2cAddress = I2C_ADDRESS_INITIAL;
+uint8_t i2cAddress = TMAG5273_I2C_ADDRESS_INITIAL;
 
 // Interrupt pin used
 // NOTE: This pin is specific to the SparkFun IoT Motor Driver
@@ -14,7 +14,7 @@ uint8_t intPin = 4;
 volatile bool interruptFlag = false;
 
 // Sleeptime constant
-int sleeptime = 0x1;
+int sleeptime = TMAG5273_SLEEP_5MS;
 
 // ISR to print what interrupt was triggered
 void isr1() 
@@ -28,16 +28,10 @@ void setup()
   Wire.begin();
   // Start serial communication at 115200 baud
   Serial.begin(115200);   
-  // Set clock speed to be the fastest for better communication 
-  Wire.setClock(1000000);  
 
-  // Configure Interrupt Pin
-  pinMode(intPin, INPUT);
-  // Attach interrupt to pin 4 as a digital, falling pin
-  attachInterrupt(digitalPinToInterrupt(intPin), isr1, FALLING);
 
   // Begin example of the magnetic sensor code (and add whitespace for easy reading)
-  Serial.println("TMAG5273 Example 5: Low Power / Wake-Up and Sleep");
+  Serial.println("TMAG5273 Example 3: Low Power / Wake-Up and Sleep");
   Serial.println("");
   // If begin is successful (0), then start example
   if(sensor.begin(i2cAddress, Wire) == true)
@@ -50,17 +44,19 @@ void setup()
     while(1); // Runs forever
   }
 
-  // Setup delay for race case
-  delay(500);
+  // Configure Interrupt Pin
+  pinMode(intPin, OUTPUT);
+  // Attach interrupt to pin 4 as a digital, falling pin
+  attachInterrupt(digitalPinToInterrupt(intPin), isr1, FALLING);
   
-  // Set operating mode
-  sensor.setOperatingMode(3); // 0X3
+  // Set operating mode to wake up and sleep
+  sensor.setOperatingMode(TMAG5273_WAKE_UP_AND_SLEEP_MODE); // 0X3
 
   // Set interrupt through !INT
-  sensor.setInterruptMode(INTERRUPT_THROUGH_INT);
+  sensor.setInterruptMode(TMAG5273_INTERRUPT_THROUGH_INT);
 
   // Set the !INT pin state - low until cleared
-  sensor.setIntPinState(0);
+  sensor.setIntPinState(false);
 
   // Set time spent in low power mode between conversions
   sensor.setSleeptime(sleeptime);
@@ -84,7 +80,7 @@ void loop()
   if(interruptFlag == true)
   {
     // Assert flag back to false
-    interruptFlag == false;
+    interruptFlag = false;
 
     if(sensor.readWakeUpAndSleepData(&magX, &magY, &magZ, &temperatureData) == 0)
     {
@@ -105,7 +101,7 @@ void loop()
   }
 
   // Set operating mode back to wakeup and sleep
-  sensor.setOperatingMode(3);
+  sensor.setOperatingMode(TMAG5273_WAKE_UP_AND_SLEEP_MODE);
 
   delay(500);
 

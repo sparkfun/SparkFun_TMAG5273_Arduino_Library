@@ -10,17 +10,13 @@ void setup()
 {
   Wire.begin();
   // Start serial communication at 115200 baud
-  Serial.begin(115200);   
-  // Set clock speed to be the fastest for better communication 
-  Wire.setClock(1000000);
+  Serial.begin(115200);  
 
   // Begin example of the magnetic sensor code (and add whitespace for easy reading)
   Serial.println("TMAG5273 Example 1: Basic Readings");
   Serial.println("");
+
   // If begin is successful (0), then start example
-
-  Serial.println(sensor.getManufacturerID(), HEX);
-
   if(sensor.begin(i2cAddress, Wire) == 1)
   {
     Serial.println("Begin");

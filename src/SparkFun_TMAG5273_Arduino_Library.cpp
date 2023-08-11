@@ -17,7 +17,7 @@ Distributed as-is; no warranty is given.
 ******************************************************************************/
 
 #include "SparkFun_TMAG5273_Arduino_Library.h"
-#include "SparkFun_TMAG5273_Arduino_Library_Registers.h"
+#include "SparkFun_TMAG5273_Arduino_Library_Defs.h"
 #include <Arduino.h>
 #include <Wire.h>
 
@@ -587,8 +587,6 @@ int8_t TMAG5273::setOperatingMode(uint8_t opMode)
         bitWrite(mode, 1, 1);
         writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
     }
-
-    Serial.println(mode, HEX);
 
     return getError();
 }
@@ -1878,7 +1876,7 @@ uint8_t TMAG5273::getSleeptime()
     }
     else if ((sleep0 == 0) && (sleep1 == 0) && (sleep2 == 1) && (sleep3 == 1)) // 0b1011
     {
-        return 11; // 20000ms
+        return 12; // 20000ms
     }
     else
     {
@@ -2446,7 +2444,7 @@ uint16_t TMAG5273::getManufacturerID()
 
     readRegisters(TMAG5273_REG_MANUFACTURER_ID_LSB, databuffer, 2);
 
-    deviceIDReg = (databuffer[0] << 8) | (databuffer[1]);
+    deviceIDReg = (databuffer[1] << 8) | (databuffer[0]);
 
     return deviceIDReg;
 }
