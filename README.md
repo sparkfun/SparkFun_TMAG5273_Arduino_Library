@@ -1,9 +1,6 @@
 SparkFun TMAG5273 Arduino Library
 ========================================
 
-[![SparkFun IoT Motor Driver](https://cdn.sparkfun.com/r/600-600/assets/parts/2/1/9/9/5/22132-_01.jpg)](https://cdn.sparkfun.com/assets/parts/2/1/9/9/5/22132-_01.jpg)
-
-
 
 This is the SparkFun library for the Texas Instruments TMAG5273 low-power linear 3D Hall-effect sensor with I<sup>2</sup>C interface as used on the [SparkFun IoT Motor Driver (ESP32 WROOM, TMC6300)](https://www.sparkfun.com/products/22132). 
 
