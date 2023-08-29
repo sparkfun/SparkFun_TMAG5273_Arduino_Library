@@ -1,41 +1,29 @@
-SparkFun <PRODUCT NAME>
+SparkFun TMAG5273 Arduino Library
 ========================================
 
-[![SparkFun Part Name](URL for picture of part)](URL for product on Sparkfun.com)
+[![SparkFun IoT Motor Driver](https://cdn.sparkfun.com/r/600-600/assets/parts/2/1/9/9/5/22132-_01.jpg)](https://cdn.sparkfun.com/assets/parts/2/1/9/9/5/22132-_01.jpg)
 
-[*SparkFun Part Name (SKU)*](URL for product on Sparkfun.com)
 
-<Basic description of the part.>
+
+This is the SparkFun library for the Texas Instruments TMAG5273 low-power linear 3D Hall-effect sensor with I<sup>2</sup>C interface as used on the [SparkFun IoT Motor Driver (ESP32 WROOM, TMC6300)](https://www.sparkfun.com/products/22132). 
 
 Repository Contents
 -------------------
 
-* **/Documentation** - Data sheets, additional product information
-* **/Enclosure** - Enclosure files 
-* **/Firmware** - Example code 
-* **/Hardware** - Eagle design files (.brd, .sch)
-* **/Libraries** - Libraries for use with the <PRODUCT NAME>
-* **/Production** - Production panel files (.brd)
-* **/Software** - Related software for the <PRODUCT NAME>
+* **/examples** - Example sketches for the library (.ino). Run these from the Arduino IDE.
+* **/src** - Source files for the library (.cpp, .h).
+* **/Documentation** - Datasheet for the TMAG5273.
+* **keywords.txt** - Keywords from this library that will be highlighted in the Arduino IDE.
+* **library.properties** - General library properties for the Arduino package manager.
+* **[CONTRIBUTING.md](./CONTRIBUTING.md)** - guidance on how to contribute to this library.
+
 
 Documentation
 --------------
-* **[Library](GitHub library URL)** - <LANGUAGE> library for the <PRODUCT NAME>.
-* **[Hookup Guide](Learn.SparkFun URL)** - Basic hookup guide for the <PRODUCT NAME>.
-* **[SparkFun Fritzing repo](https://github.com/sparkfun/Fritzing_Parts)** - Fritzing diagrams for SparkFun products.
-* **[SparkFun 3D Model repo](https://github.com/sparkfun/3D_Models)** - 3D models of SparkFun products. 
-* **[SparkFun Graphical Datasheets](https://github.com/sparkfun/Graphical_Datasheets)** -Graphical Datasheets for various SparkFun products.
 
-Product Versions
-----------------
-* [Part SKU](part URL) - Basic part and short description here
-* [Retail part SKU](retail URL) - Retail packaging of standard description here
-* [Any other parts this repo covers](any other URLs) - Description of said parts
-
-Version History
----------------
-* [vExxFxxZxxHxxLxxSxx](URL for tag specific to this version) - Description 
-* [vEyyFyyZyyHyyLyySyy](URL for tag specific to this version) - Description
+* **[Installing an Arduino Library Guide](https://learn.sparkfun.com/tutorials/installing-an-arduino-library)** - Basic information on how to install an Arduino library.
+* **[Hookup Guide](LINK HERE)** - Basic hookup guide for the SparkFun IoT Motor Driver Breakout (ESP32, TMC6300).
+* **[Product Repository](https://github.com/sparkfun/SparkFun_IoT_Brushless_Motor_Driver)** - Main repository for the IoT Motor Driver (including hardware files)
 
 License Information
 -------------------
