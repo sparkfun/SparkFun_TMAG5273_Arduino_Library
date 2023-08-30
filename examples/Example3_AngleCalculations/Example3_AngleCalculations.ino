@@ -19,7 +19,7 @@ void setup()
   Serial.begin(115200);   
 
   // Begin example of the magnetic sensor code (and add whitespace for easy reading)
-  Serial.println("TMAG5273 Example 5: Angle Calculations");
+  Serial.println("TMAG5273 Example 3: Angle Calculations");
   Serial.println("");
   // If begin is successful (0), then start example
   if(sensor.begin(i2cAddress, Wire) == true)

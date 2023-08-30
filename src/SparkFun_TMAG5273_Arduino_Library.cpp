@@ -215,6 +215,7 @@ int8_t TMAG5273::setupWakeUpAndSleep()
 int8_t TMAG5273::readWakeUpAndSleepData(float *xVal, float *yVal, float *zVal, float *temperature)
 {
     uint8_t wakeupRegisterRead[8];
+    // Read 4 bits of data
     readRegisters(TMAG5273_REG_T_MSB_RESULT, wakeupRegisterRead, 4);
 
     // Need to get the values to themselves (bitwise operation)

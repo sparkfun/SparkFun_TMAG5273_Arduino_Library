@@ -34,7 +34,7 @@ void setup()
   Serial.begin(115200);   
 
   // Begin example of the magnetic sensor code
-  Serial.println("TMAG5273 Example 6: Basic Readings with the IoT Motor Driver");
+  Serial.println("TMAG5273 Example 5: Basic Readings with the IoT Motor Driver");
 
   // ********* Driver config *********
   // power supply voltage [V]
