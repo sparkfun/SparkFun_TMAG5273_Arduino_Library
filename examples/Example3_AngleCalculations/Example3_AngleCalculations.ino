@@ -53,8 +53,8 @@ void loop()
     float angleCalculation = sensor.getAngleResult();
 
     Serial.print("XYX: ");
-    Serial.print(angleCalculation);
-    Serial.println(" mT");
+    Serial.print(angleCalculation, 4);
+    Serial.println(" deg");
 
   }
   else
