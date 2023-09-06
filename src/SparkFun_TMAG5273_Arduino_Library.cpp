@@ -2644,10 +2644,10 @@ float TMAG5273::getZData()
 /// @return Angle measurement result in degrees (float value)
 float TMAG5273::getAngleResult()
 {
-    int8_t angleLSB = 0;
-    int8_t angleMSB = 0;
+    uint8_t angleLSB = 0;
+    uint8_t angleMSB = 0;
 
-    angleLSB = readRegister(TMAG5273_REG_ANGLE_RESULT_LSB);
+    angleLSB = readRegister(TMAG5273_REG_ANGLE_RESULT_LSB) & 0b11111111;
     angleMSB = readRegister(TMAG5273_REG_ANGLE_RESULT_MSB);
 
     // Variable to hold the full angle MSB and LSB registers
@@ -2663,7 +2663,7 @@ float TMAG5273::getAngleResult()
     angleReg = (angleMSB << 8) | angleLSB;
 
     // Removing the uneeded bits for the fraction value
-    decValue = (angleReg && (0b0000000000001111)) / 16;
+    decValue = float(angleLSB & 0b1111) / 16;
 
     // Shift off the decimal value (last 4 bits)
     angleVal = angleReg >> 4;
