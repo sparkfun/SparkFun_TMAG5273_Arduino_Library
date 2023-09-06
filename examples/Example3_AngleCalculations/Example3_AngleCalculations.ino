@@ -54,7 +54,7 @@ void loop()
 
     Serial.print("XYX: ");
     Serial.print(angleCalculation, 4);
-    Serial.println(" deg");
+    Serial.println("°");
 
   }
   else
