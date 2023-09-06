@@ -11,7 +11,7 @@ along with defining the registers used.
 Development environment specifics:
     IDE: Arduino 2.1.0
     Hardware Platform: Arduino Uno
-    TMAG5273 Breakout Version: 1.0.0
+    TMAG5273 Breakout Version: 1.0.1
 Distributed as-is; no warranty is given.
 ******************************************************************************/
 
