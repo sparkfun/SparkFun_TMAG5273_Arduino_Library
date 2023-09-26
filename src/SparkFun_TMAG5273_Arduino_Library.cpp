@@ -176,7 +176,7 @@ int8_t TMAG5273::writeRegisters(uint8_t regAddress, uint8_t *dataBuffer, uint8_t
 uint8_t TMAG5273::readRegister(uint8_t regAddress)
 {
     uint8_t regVal = 0;
-    readRegisters(regAddress, &regVal, 1);
+    readRegisters(regAddress, &regVal, 2);
     return regVal;
 }
 
@@ -2536,11 +2536,8 @@ float TMAG5273::getTemp()
 /// @return X-Channel data conversion results
 float TMAG5273::getXData()
 {
-    int8_t xLSB = 0;
-    int8_t xMSB = 0;
-
-    xLSB = readRegister(TMAG5273_REG_X_LSB_RESULT);
-    xMSB = readRegister(TMAG5273_REG_X_MSB_RESULT);
+    int8_t xLSB = readRegister(TMAG5273_REG_X_LSB_RESULT);
+    int8_t xMSB = readRegister(TMAG5273_REG_X_MSB_RESULT);
 
     // Variable to store full X data
     int16_t xData = 0;
@@ -2581,7 +2578,7 @@ float TMAG5273::getYData()
     // Variable to store full Y data
     int16_t yData = 0;
     // Combines the two in one register where the MSB is shifted to the correct location
-    yData = yLSB + (yMSB << 8); 
+    yData = yLSB + (yMSB << 8);
 
     // Reads to see if the range is set to 40mT or 80mT
     uint8_t rangeValXY = getXYAxisRange();
@@ -2617,7 +2614,7 @@ float TMAG5273::getZData()
     // Variable to store full X data
     int16_t zData = 0;
     // Combines the two in one register where the MSB is shifted to the correct location
-    zData = zLSB + (zMSB << 8);
+    zData = zLSB + (zMSB << 8); 
 
     // Reads to see if the range is set to 40mT or 80mT
     uint8_t rangeValZ = getZAxisRange();
@@ -2664,7 +2661,7 @@ float TMAG5273::getAngleResult()
     float finalVal = 0;
 
     // Combining the register value
-    angleReg = angleLSB + (angleMSB << 8);
+    angleReg = angleLSB + (angleMSB << 8); 
 
     // Removing the uneeded bits for the fraction value
     decValue = float(angleLSB & 0b1111) / 16;
