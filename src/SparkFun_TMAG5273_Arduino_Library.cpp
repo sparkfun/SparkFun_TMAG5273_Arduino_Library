@@ -852,6 +852,33 @@ int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
     return getError();
 }
 
+/// @brief Sets the number of threshold crossings
+/// @param cross Value to set the number of threshold crossings
+///   0x0 = TMAG5273_THRESHOLD_1 (1 crossing)
+///   0x1 = TMAG5273_THRESHOLD_4 (4 crossings)
+/// @return Error code (0 is success, negative is failure, positive is warning)
+int8_t TMAG5273::setThresholdCross(uint8_t cross)
+{
+    uint16_t mode = 0;
+    mode = readRegister(TMAG5273_REG_SENSOR_CONFIG_2);
+
+    // If-Else statement for writing values to the register, bit by bit
+    if (cross == 0X0) // 0b0
+    {
+        // Write 0 to bit 6 of the register value
+        bitWrite(mode, 6, 0);
+        // Writes mode to the CONFIG_2 register
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
+    }
+    else if (threshDir == 0X1) // 0b1
+    {
+        bitWrite(cross, 6, 1);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
+    }
+
+    return getError();
+}
+
 /// @brief Sets the direction of threshold check. This bit
 ///  is ignored when THR_HYST > 001b
 /// @param threshDir value to set the direction of threshold
@@ -905,6 +932,34 @@ int8_t TMAG5273::setMagnitudeGain(uint8_t gainAdjust)
     {
         bitWrite(mode, 4, 1);
         writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
+    }
+
+    return getError();
+}
+
+/// @brief This function sets the axis for the magnitude gain correction
+/// value entered in the MAG_GAIN_CONFIG register.
+/// @param select Selects which channel 
+///   0x0 = 1st channel (XY)
+///   0x1 = 2nd channel (Z)
+/// @return Error code (0 is success, negative is failure, positive is warning)
+int8_t TMAG5273::setMagChannelSelect(uint8_t select)
+{
+    uint8_t channelReg = 0;
+    channelReg = readRegister(TMAG5273_REG_SENSOR_CONFIG_2);
+
+    // If-Else statement for writing values to the register, bit by bit
+    if (select == 0) // 0b0
+    {
+        // Write 0 to bit 4 of the register value
+        bitWrite(channelReg, 4, 0);
+        // Writes mode to the CONFIG_2 register
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, channelReg);
+    }
+    else if (select == 1) // 0b1
+    {
+        bitWrite(channelReg, 4, 1);
+        writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, channelReg);
     }
 
     return getError();
@@ -1404,6 +1459,34 @@ int8_t TMAG5273::setI2CAddress(uint8_t address)
     return getError();
 }
 
+/// @brief Clears the POR bit of the CONV_STATUS register.
+///  POR = Power-On-Reset
+///   TMAG5273_NO_POR  = 0x0
+///   TMAG5273_YES_POR = 0x1
+/// @param por Bit to clear the register once POR happens
+/// @return Error code (0 is success, negative is failure, positive is warning)
+int8_t TMAG5273::setPOR(bool por)
+{
+    uint16_t mode = 0;
+    mode = readRegister(TMAG5273_REG_CONV_STATUS);
+
+    // If-Else statement for writing values to the register, bit by bit
+    if (por == 0) // 0b0
+    {
+        // Write 0 to bit 1 of the register value
+        bitWrite(mode, 4, 0);
+        // Writes mode to the CONFIG_2 register
+        writeRegister(TMAG5273_REG_CONV_STATUS, mode);
+    }
+    else if (por == 1) // 0b1
+    {
+        bitWrite(mode, 4, 1);
+        writeRegister(TMAG5273_REG_CONV_STATUS, mode);
+    }
+
+    return getError();
+}
+
 /// @brief Writes to the I2C_ADDRESS_UPDATE_EN bit to enable
 ///  a new user defined I2C address.
 /// @param addressEnable Value to determine if the user can write a new address.
@@ -1653,7 +1736,7 @@ uint8_t TMAG5273::getLowPower()
 ///     0X0 = Glitch filter OFF
 ///     TMAG5273_REG_DEVICE_CONFIG_2 - bit 3
 /// @return I2C filter ON (0) or OFF (1)
-uint8_t TMAG5273::getGlitchFiler()
+uint8_t TMAG5273::getGlitchFilter()
 {
     uint8_t glitchMode = 0;
     glitchMode = readRegister(TMAG5273_REG_DEVICE_CONFIG_2);
@@ -1885,6 +1968,20 @@ uint8_t TMAG5273::getSleeptime()
     }
 }
 
+/// @brief Returns the number of threshold crossings
+///   0x0 = 1 threshold cross
+///   0x1 = 4 threshold crossings
+/// @return Number of threshold crossings
+uint8_t TMAG5273::getThresholdCross()
+{
+    uint8_t crossReg = 0;
+    crossReg = readRegister(TMAG5273_REG_SENSOR_CONFIG_2);
+
+    uint8_t cross6 = bitRead(crossReg, 6);
+
+    return cross6;
+}
+
 /// @brief Returns the direction of threshold check. This bit is
 ///  ignored when THR_HYST > 001b.
 ///     0X0 = sets interrupt for field above the threshold
@@ -1901,13 +1998,23 @@ uint8_t TMAG5273::getMagDir()
     return magDirection5;
 }
 
+uint8_t TMAG5273::getMagnitudeGain()
+{
+    uint8_t magGainReg = 0;
+    magGainReg = readRegister(TMAG5273_REG_SENSOR_CONFIG_2);
+
+    uint8_t magnitudeGain = bitRead(magGainReg, 4);
+
+    return magnitudeGain;
+}
+
 /// @brief Returns the axis for magnitude gain correction value
 ///  entered in MAG_GAIN_CONFIG register
 ///     0X0 = 1st channel is selected for gain adjustment
 ///     0X1 = 2nd channel is selected for gain adjustment
 ///     TMAG5273_REG_SENSOR_CONFIG_2 - bit 4
 /// @return First (0) or Second (0) channel selected for gain adjustment
-uint8_t TMAG5273::getMagnitudeChannelSelect()
+uint8_t TMAG5273::getMagChannelSelect()
 {
     uint8_t magGainReg = 0;
     magGainReg = readRegister(TMAG5273_REG_SENSOR_CONFIG_2);
@@ -2351,6 +2458,21 @@ uint8_t TMAG5273::getPOR()
     return PORBit;
 }
 
+/// @brief Returns if the device experienced an oscillator error.
+///     0X0 = No Oscillator error detected
+///     0X1 = Oscillator error detected
+///     TMAG5273_REG_DEVICE_STATUS - bit 3
+/// @return Device is powered up or experienced POR.
+uint8_t TMAG5273::getOscillatorError()
+{
+    uint8_t statusReg = 0;
+    statusReg = readRegister(TMAG5273_REG_DEVICE_STATUS);
+
+    uint8_t oscBit = bitRead(statusReg, 3);
+
+    return oscBit;
+}
+
 /// @brief Returns if there was a detection of any internal
 ///  diagnostics fail which include VCC UV, internal memory CRC
 ///  error, !INT pin error and internal clock error. Ignore
@@ -2383,6 +2505,20 @@ uint8_t TMAG5273::getResultStatus()
     uint8_t resultBit = bitRead(convReg, 0);
 
     return resultBit;
+}
+
+/// @brief Returns the status of the I2C_ADDRESS_UPDATE_EN bit to enable
+///  a new user defined I2C address.
+/// @param addressEnable Value to determine if the user can write a new address.
+///     0X0 = Disable update of I2C address
+///     0X1 = Enable update of I2C address with bits (7:1)
+/// @return Error code (0 is success, negative is failure, positive is warning)
+bool TMAG5273::getI2CAddressEN()
+{
+    uint8_t i2cReg = readRegister(TMAG5273_REG_I2C_ADDRESS);
+    bool addressBit = bitRead(i2cReg, 0);
+
+    return addressBit;
 }
 
 /// @brief Returns the I2C address of the device. There is a 7-bit
@@ -2614,7 +2750,7 @@ float TMAG5273::getZData()
     // Variable to store full X data
     int16_t zData = 0;
     // Combines the two in one register where the MSB is shifted to the correct location
-    zData = zLSB + (zMSB << 8); 
+    zData = zLSB + (zMSB << 8);
 
     // Reads to see if the range is set to 40mT or 80mT
     uint8_t rangeValZ = getZAxisRange();
@@ -2661,7 +2797,7 @@ float TMAG5273::getAngleResult()
     float finalVal = 0;
 
     // Combining the register value
-    angleReg = angleLSB + (angleMSB << 8); 
+    angleReg = angleLSB + (angleMSB << 8);
 
     // Removing the uneeded bits for the fraction value
     decValue = float(angleLSB & 0b1111) / 16;

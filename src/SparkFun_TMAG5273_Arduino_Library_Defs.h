@@ -108,7 +108,7 @@ Features as per datasheet
 #define TMAG5273_TEMPERATURE_DISABLE 0X0 // Temperature channel disabled
 #define TMAG5273_TEMPERATURE_ENABLE 0X1  // Temperature channel enabled
 
-#define TMAG5273_INTERRUPT_NOT_ASSERTED 0X0 // Interrupt is not asserved when set
+#define TMAG5273_INTERRUPT_NOT_ASSERTED 0X0 // Interrupt is not asserted when set
 #define TMAG5273_INTERRUPT_ASSERTED 0X1     // Interrupt is asserted
 
 #define TMAG5273_NO_INTERRUPT 0X0              // No interrupt

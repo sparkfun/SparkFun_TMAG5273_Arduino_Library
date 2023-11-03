@@ -22,6 +22,20 @@ Documentation
 * **[Hookup Guide](https://docs.sparkfun.com/SparkFun_IoT_Brushless_Motor_Driver)** - Basic hookup guide for the SparkFun IoT Motor Driver Breakout (ESP32, TMC6300).
 * **[Product Repository](https://github.com/sparkfun/SparkFun_IoT_Brushless_Motor_Driver)** - Main repository for the IoT Motor Driver (including hardware files)
 
+
+Products that use this Library 
+---------------------------------
+
+* [*ROB-22132*](https://www.sparkfun.com/products/22132)
+
+Version History
+---------------
+
+* [V_1.0.0](https://github.com/sparkfun/SparkFun_TMAG5273_Arduino_Library/tree/v1.0.0) - Public release.
+* [V_1.0.1](https://github.com/sparkfun/SparkFun_TMAG5273_Arduino_Library/tree/v1.0.1) - Fix Angle Calculations from Pull Request.
+* [V_1.0.2](https://github.com/sparkfun/SparkFun_TMAG5273_Arduino_Library/tree/v1.0.2) - Adjusted LSB/MSB math from Pull Request. 
+
+
 License Information
 -------------------
 

@@ -51,8 +51,10 @@ class TMAG5273
     int8_t setOperatingMode(uint8_t opMode);        // Selects operating mode and updates values based on operating mode
     int8_t setMagneticChannel(uint8_t channelMode); // Sets the data acquisition from magnetic axis channels
     int8_t setSleeptime(uint8_t sleepTime);         // Sets the time spent in low power mode between conversions
+    int8_t setThresholdCross(uint8_t cross);        // Sets the number of threshold crossings
     int8_t setMagDir(uint8_t threshDir);            // Sets the direction of threshold check
     int8_t setMagnitudeGain(uint8_t gainAdjust);    // Sets the axis for magnitude gain correction value
+    int8_t setMagChannelSelect(uint8_t select);    // Sets the axis for magnitude gain correction value
     int8_t setMagneticGain(float magneticGain);     // Sets the 8-bit gain value to adjust a Hall axis gain
     int8_t setMagneticOffset1(float offset1);       // Sets the offset value determined by a primary for the first axis
     int8_t setMagneticOffset2(float offset2);       // Sets the offset value determined by a primary for the second axis
@@ -74,6 +76,7 @@ class TMAG5273
     int8_t setI2CAddress(uint8_t address);              // Change these bits to a new I2C address if required
     int8_t setI2CAddressEN(
         bool addressEnable); // Enables/disables bit to allow the user to change the I2C address of the devices
+    int8_t setPOR(bool por); // Clears the bit once POR happens to the device 
     int8_t setOscillatorError(bool oscError); // Clear the Oscillator Error pin accordingly
 
     // Get Device Configuration Register Settings
@@ -83,13 +86,15 @@ class TMAG5273
     uint8_t getReadMode();               // Returns the I2C read mode
     uint8_t getIntThreshold();           // Returns the threshold for the interrupt function
     uint8_t getLowPower();               // Returns if the device is operating in low power or noise mode
-    uint8_t getGlitchFiler();            // Returns I2C glitch filter on or off
+    uint8_t getGlitchFilter();            // Returns I2C glitch filter on or off
     uint8_t getTriggerMode();            // Returns if trigger is set to I2C command or INT pin
     uint8_t getOperatingMode();          // Returns the operating mode from 1 of the 4 modes.
     uint8_t getMagneticChannel();        // Returns data acquisiton from the list of mag axis channels
     uint8_t getSleeptime();              // Returns the time spent in low power mode
     uint8_t getMagDir();                 // Returns the direction of threshold check
-    uint8_t getMagnitudeChannelSelect(); // Returns the axis for magnitude gain correct XYAxisRange section value
+    uint8_t getThresholdCross();         // Returns the number of threshold crossings (1 or 4)
+    uint8_t getMagnitudeGain();          // Returns the axis for magnitude gain correction value
+    uint8_t getMagChannelSelect();       // Returns the axis for magnitude gain correct XYAxisRange section value
     uint8_t getMagneticGain();           // Returns the value determined to adjust a Hall axis gain
     int8_t getMagneticOffset1();         // Returns the offset value determined by a primary for the first axis
     int8_t getMagneticOffset2();         // Returns the offset value determined by a primary for the second axis
@@ -108,8 +113,10 @@ class TMAG5273
     uint8_t getMaskInt();                // Returns the Mask !INT pin when !INT is connected to GND
     uint8_t getSetCount();               // Returns the rolling count of conversion data sets
     uint8_t getPOR();                    // Returns if the device is powered up or expereinced POR
+    uint8_t getOscillatorError();        // Returns if there was an oscillator error 
     uint8_t getDiagStatus();             // Returns if there was a detection of any internal diagnostics fail
     uint8_t getResultStatus();           // Returns the conversion data buffer status (Data complete or not)
+    uint8_t getI2CAddressEN();           // Returns if the device is enabled to rewrite the I2C Address
     uint8_t getI2CAddress();             // Returns the I2C address of the device
     uint8_t getDeviceID();               // Returns the device version indicator
     uint16_t getManufacturerID();        // Returns the manufacturer ID
