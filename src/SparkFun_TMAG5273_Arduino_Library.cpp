@@ -1186,25 +1186,16 @@ int8_t TMAG5273::setZThreshold(float zThreshold)
 }
 
 /// @brief Sets the temperature threshold code entered by the user. The
-///  valid temperature threshold ranges are -41C to 170C with the
-///  threshold codes for -41C = 0X1A, and 170C = 0X34. Resoltuion is
-///  8 degree C/LSB. Default 0x0 means no threshold comparison.
+///  valid temperature threshold ranges are -41C to 170C.
+///  Default 0x0 means no threshold comparison.
 /// @param tempThresh 8-bit value to set the threshold for the temperature limit
 ///     TMAG5273_REG_T_CONFIG - bits 7-1
 /// @return Error code (0 is success, negative is failure, positive is warning)
-int8_t TMAG5273::setTemperatureThreshold(float tempThresh)
+int8_t TMAG5273::setTemperatureThreshold(int8_t tempThresh)
 {
-    uint8_t temp_reg = 0;
-    temp_reg = readRegister(TMAG5273_REG_T_CONFIG);
-
-    // Shift the value over by 1 to create the correct value to put into the regsiter
-    temp_reg = temp_reg | (uint8_t)tempThresh;
-
-    // Check if the value is within the range as described (-41C through 170C)
-    if ((tempThresh > 0X1A) && (tempThresh < 0X34))
-    {
-        writeRegister(TMAG5273_REG_T_CONFIG, temp_reg); // Write the correct value to the register
-    }
+    // Write the new address into the register and enable the temperature to be read 
+    // NOTE: Temperature is set to be enabled here for temperatures readings. 
+    writeRegister(TMAG5273_REG_T_CONFIG, (tempThresh << 1) | 0x01);
 
     return getError();
 }
