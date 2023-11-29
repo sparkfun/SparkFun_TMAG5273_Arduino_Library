@@ -400,17 +400,17 @@ int8_t TMAG5273::setReadMode(uint8_t readMode)
     mode = readRegister(TMAG5273_REG_DEVICE_CONFIG_1);
 
     // Write values to the register, bit by bit
-    if (mode == 0)
+    if (readMode == 0)
     {
         bitWrite(mode, 0, 0);
         bitWrite(mode, 1, 0);
     }
-    else if (mode == 1)
+    else if (readMode == 1)
     {
         bitWrite(mode, 0, 1);
         bitWrite(mode, 1, 0);
     }
-    else if (mode == 2) //
+    else if (readMode == 2) //
     {
         bitWrite(mode, 0, 0);
         bitWrite(mode, 1, 1);
