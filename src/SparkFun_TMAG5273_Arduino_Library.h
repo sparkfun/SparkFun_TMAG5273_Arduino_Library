@@ -62,7 +62,7 @@ class TMAG5273
     int8_t setXThreshold(float xThreshold);         // Sets the X axis threshold code for limit check
     int8_t setYThreshold(float yThreshold);         // Sets the Y axis threshold code for limit check
     int8_t setZThreshold(float zThresh);            // Sets the Z axis threshold code for limit check
-    int8_t setTemperatureThreshold(float tempThresh); // Sets the Temperature threshold code for limit check
+    int8_t setTemperatureThreshold(int8_t tempThresh); // Sets the Temperature threshold code for limit check
     int8_t setTemperatureEn(
         bool temperatureEnable); // Sets the enable bit that determines the data acquisition of the temp channel
     int8_t setInterruptResult(bool interruptEnable); // Sets the enable interrupt response bit on conversion complete
