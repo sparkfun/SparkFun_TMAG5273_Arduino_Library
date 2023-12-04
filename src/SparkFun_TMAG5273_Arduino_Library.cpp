@@ -2585,7 +2585,7 @@ float TMAG5273::getYData()
 
     // 16-bit data format equation
     float div = 32768;
-    float yOut = (range * yData) / div;
+    float yOut = -(range * yData) / div;
 
     return yOut;
 }
@@ -2622,7 +2622,7 @@ float TMAG5273::getZData()
     // div = (2^16) / 2    (as per the datasheet equation 10)
     // 16-bit data format equation
     float div = 32768;
-    float zOut = (range * zData) / div;
+    float zOut = -(range * zData) / div;
 
     return zOut;
 }
