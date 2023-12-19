@@ -81,12 +81,6 @@ int8_t TMAG5273::begin(uint8_t sensorAddress, TwoWire &wirePort)
         return 0;
     }
 
-    // Check that X and Y angle calculation is disabled
-    if (getAngleEn() != TMAG5273_NO_ANGLE_CALCULATION)
-    {
-        return 0;
-    }
-
     // returns true if all the checks pass
     return 1;
 }
