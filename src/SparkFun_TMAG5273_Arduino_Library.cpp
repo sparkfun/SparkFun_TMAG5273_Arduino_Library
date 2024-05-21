@@ -2527,8 +2527,8 @@ float TMAG5273::getTemp()
 /// @return X-Channel data conversion results
 float TMAG5273::getXData()
 {
-    int8_t xLSB = readRegister(TMAG5273_REG_X_LSB_RESULT);
-    int8_t xMSB = readRegister(TMAG5273_REG_X_MSB_RESULT);
+    uint8_t xLSB = readRegister(TMAG5273_REG_X_LSB_RESULT);
+    uint8_t xMSB = readRegister(TMAG5273_REG_X_MSB_RESULT);
 
     // Variable to store full X data
     int16_t xData = 0;
@@ -2560,8 +2560,8 @@ float TMAG5273::getXData()
 /// @return Y-Channel data conversion results
 float TMAG5273::getYData()
 {
-    int8_t yLSB = 0;
-    int8_t yMSB = 0;
+    uint8_t yLSB = 0;
+    uint8_t yMSB = 0;
 
     yLSB = readRegister(TMAG5273_REG_Y_LSB_RESULT);
     yMSB = readRegister(TMAG5273_REG_Y_MSB_RESULT);
@@ -2596,8 +2596,8 @@ float TMAG5273::getYData()
 /// @return Z-Channel data conversion results.
 float TMAG5273::getZData()
 {
-    int8_t zLSB = 0;
-    int8_t zMSB = 0;
+    uint8_t zLSB = 0;
+    uint8_t zMSB = 0;
 
     zLSB = readRegister(TMAG5273_REG_Z_LSB_RESULT);
     zMSB = readRegister(TMAG5273_REG_Z_MSB_RESULT);
