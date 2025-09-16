@@ -122,20 +122,20 @@ int8_t TMAG5273::readRegisters(uint8_t regAddress, uint8_t *dataBuffer, uint8_t 
 {
     // uint8_t _deviceAddress = 0X22;
     //  Jump to desired register address
-    Wire.beginTransmission(_deviceAddress);
-    Wire.write(regAddress);
-    if (Wire.endTransmission())
+    _i2cPort->beginTransmission(_deviceAddress);
+    _i2cPort->write(regAddress);
+    if (_i2cPort->endTransmission())
     {
         return -1;
     }
 
     // Read bytes from these registers
-    Wire.requestFrom(_deviceAddress, numBytes);
+    _i2cPort->requestFrom(_deviceAddress, numBytes);
 
     // Store all requested bytes
-    for (uint8_t i = 0; i < numBytes && Wire.available(); i++)
+    for (uint8_t i = 0; i < numBytes && _i2cPort->available(); i++)
     {
-        dataBuffer[i] = Wire.read();
+        dataBuffer[i] = _i2cPort->read();
     }
 
     return 0;
@@ -150,19 +150,19 @@ int8_t TMAG5273::writeRegisters(uint8_t regAddress, uint8_t *dataBuffer, uint8_t
 {
     // uint8_t _deviceAddress = 0X22;
     //  Begin transmission
-    Wire.beginTransmission(_deviceAddress);
+    _i2cPort->beginTransmission(_deviceAddress);
 
     // Write the address
-    Wire.write(regAddress);
+    _i2cPort->write(regAddress);
 
     // Write all the data
     for (uint8_t i = 0; i < numBytes; i++)
     {
-        Wire.write(dataBuffer[i]);
+        _i2cPort->write(dataBuffer[i]);
     }
 
     // End transmission
-    if (Wire.endTransmission())
+    if (_i2cPort->endTransmission())
     {
         return -1;
     }
