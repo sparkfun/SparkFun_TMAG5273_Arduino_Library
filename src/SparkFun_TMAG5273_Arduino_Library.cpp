@@ -46,7 +46,9 @@ int8_t TMAG5273::begin(uint8_t sensorAddress, TwoWire &wirePort)
     setMagneticChannel(TMAG5273_X_Y_Z_ENABLE);
     setTemperatureEn(true);
     setOperatingMode(TMAG5273_CONTINUOUS_MEASURE_MODE);
-
+    setAngleEn(TMAG5273_NO_ANGLE_CALCULATION);
+    setLowPower(TMAG5273_LOW_ACTIVE_CURRENT_MODE);
+    
     // Set the axis ranges for the device to be the largest
     setXYAxisRange(TMAG5273_RANGE_80MT);
     setZAxisRange(TMAG5273_RANGE_80MT);
