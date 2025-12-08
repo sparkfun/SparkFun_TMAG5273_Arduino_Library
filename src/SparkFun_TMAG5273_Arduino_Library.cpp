@@ -2579,8 +2579,7 @@ float TMAG5273::getXData()
 
     // Combines the two in one register where the MSB is shifted to the correct location
     // convert the uint16_t to int16_t
-    uint16_t tmpData = (xMSB << 8) + xLSB;
-    int16_t xData = *(int16_t *)&tmpData;
+    int16_t xData = (xMSB << 8) + xLSB;
 
     // Reads to see if the range is set to 40mT or 80mT
     uint8_t rangeValXY = getXYAxisRange();
@@ -2617,8 +2616,7 @@ float TMAG5273::getYData()
 
     // Combines the two in one register where the MSB is shifted to the correct location
     // convert the uint16_t to int16_t
-    uint16_t tmpData = (yMSB << 8) + yLSB;
-    int16_t yData = *(int16_t *)&tmpData;
+    int16_t yData = (yMSB << 8) + yLSB;
 
     // Reads to see if the range is set to 40mT or 80mT
     uint8_t rangeValXY = getXYAxisRange();
@@ -2656,8 +2654,7 @@ float TMAG5273::getZData()
 
     // Combines the two in one register where the MSB is shifted to the correct location
     // convert the uint16_t to int16_t
-    uint16_t tmpData = (zMSB << 8) + zLSB;
-    int16_t zData = *(int16_t *)&tmpData;
+    int16_t zData = (zMSB << 8) + zLSB;
 
     // Reads to see if the range is set to 40mT or 80mT
     uint8_t rangeValZ = getZAxisRange();
