@@ -48,6 +48,10 @@ int8_t TMAG5273::begin(uint8_t sensorAddress, TwoWire &wirePort)
     setTemperatureEn(true);
     setOperatingMode(TMAG5273_CONTINUOUS_MEASURE_MODE);
 
+    // 12/2025 - add as part of update -- from a PR pending on the repo
+    setAngleEn(TMAG5273_NO_ANGLE_CALCULATION);
+    setLowPower(TMAG5273_LOW_ACTIVE_CURRENT_MODE);
+
     // Set the axis ranges for the device to be the largest
     setXYAxisRange(TMAG5273_RANGE_80MT);
     setZAxisRange(TMAG5273_RANGE_80MT);
@@ -72,9 +76,10 @@ int8_t TMAG5273::begin(uint8_t sensorAddress, TwoWire &wirePort)
     if (getTemperatureEN() != TMAG5273_TEMPERATURE_ENABLE)
         return 0;
 
-    // Check that X and Y angle calculation is disabled
-    if (getAngleEn() != TMAG5273_NO_ANGLE_CALCULATION)
-        return 0;
+    // 12/2025 - removed as part of update -- from a PR pending on the repo
+    // // Check that X and Y angle calculation is disabled
+    // if (getAngleEn() != TMAG5273_NO_ANGLE_CALCULATION)
+    //     return 0;
 
     // returns true if all the checks pass
     return 1;
