@@ -19,20 +19,19 @@ Distributed as-is; no warranty is given.
 #ifndef __SparkFun_TMAG5273_Arduino_Library_H__
 #define __SparkFun_TMAG5273_Arduino_Library_H__
 
-#include "SparkFun_TMAG5273_Arduino_Library_Defs.h"
 #include <Arduino.h>
 #include <Wire.h>
 
-
+// use the toolkit for I2C read/write functions
+#include "SparkFun_TMAG5273_Arduino_Library_Defs.h"
+#include <SparkFun_Toolkit.h>
 class TMAG5273
 {
   public:
     TMAG5273(); // Constructor
 
-    int8_t begin(uint8_t sensorAddress = 0X22,
-                 TwoWire &wirePort =
-                     Wire); // Checks for ACK over I2C, and sets the device ID of the TMAG and chooses the wire port
-    int8_t isConnected();   // Checks for I2C address verification along with the device address
+    int8_t begin(uint8_t sensorAddress = TMAG5273_I2C_ADDRESS_INITIAL, TwoWire &wirePort = Wire);
+    int8_t isConnected();         // Checks for I2C address verification along with the device address
     int8_t setupWakeUpAndSleep(); // Sets the device to be in Wake Up and Sleep Mode
 
     int8_t readWakeUpAndSleepData(float *xVal, float *yVal, float *zVal,
@@ -127,15 +126,18 @@ class TMAG5273
     int8_t getError();         // Returns an error code (0 is success, negative is failure, positive is warning)
 
   private:
-    // I2C Communication interface settings
-    TwoWire *_i2cPort = NULL;
-    uint8_t _deviceAddress;
-
-    int8_t writeRegisters(uint8_t regAddress, uint8_t *dataBuffer, uint8_t numBytes);
-    int8_t readRegisters(uint8_t regAddress, uint8_t *dataBuffer, uint8_t numBytes);
-    uint8_t readRegister(uint8_t regAddress);
-    uint8_t writeRegister(uint8_t regAddress, uint8_t data);
-    bool ping(uint8_t i2c_address); // Checks for device presence
+    /**
+     * @brief Arduino I2C bus interface instance for the AS7343 sensor.
+     *
+     * @details
+     * This member handles the low-level I2C communication between the Arduino and the AS7343 sensor.
+     *
+     * The bus interface is configured during begin() and used by all communication methods.
+     *
+     * @see sfTkArdI2C
+     * @see begin()
+     */
+    sfTkArdI2C _theI2CBus;
 };
 
 #endif

@@ -17,7 +17,6 @@ Distributed as-is; no warranty is given.
 ******************************************************************************/
 
 #include "SparkFun_TMAG5273_Arduino_Library.h"
-#include "SparkFun_TMAG5273_Arduino_Library_Defs.h"
 #include <Arduino.h>
 #include <Wire.h>
 
@@ -33,14 +32,14 @@ TMAG5273::TMAG5273()
 /// @return Error code (1 is success, 0 is failure, negative is warning)
 int8_t TMAG5273::begin(uint8_t sensorAddress, TwoWire &wirePort)
 {
-    _i2cPort = &wirePort;           // Chooses the wire port of the device
-    _deviceAddress = sensorAddress; // Sets the address of the device
+
+    // Setup the toolkit I2C port
+    if (_theI2CBus.init(wirePort, sensorAddress) != ksfTkErrOk)
+        return 0;
 
     // Makes sure the TMAG will acknowledge over I2C along with matching Device ID's
     if (isConnected() != 0)
-    {
         return 0;
-    }
 
     // Following the Detailed Design Prodedure on page 42 of the datasheet
     setMagneticChannel(TMAG5273_X_Y_Z_ENABLE);
@@ -53,39 +52,27 @@ int8_t TMAG5273::begin(uint8_t sensorAddress, TwoWire &wirePort)
 
     // Check if there is any issue with the device status register
     if (getError() != 0)
-    {
         return 0;
-    }
 
     // Check the low active current mode (0)
     if (getLowPower() != TMAG5273_LOW_ACTIVE_CURRENT_MODE)
-    {
         return 0;
-    }
 
     // Check the operating mode to make sure it is set to continuous measure (0X2)
     if (getOperatingMode() != TMAG5273_CONTINUOUS_MEASURE_MODE)
-    {
         return 0;
-    }
 
     // Check that all magnetic channels have been enables(0X7)
     if (getMagneticChannel() != TMAG5273_X_Y_Z_ENABLE)
-    {
         return 0;
-    }
 
     // Check that the temperature data acquisition has been enabled
     if (getTemperatureEN() != TMAG5273_TEMPERATURE_ENABLE)
-    {
         return 0;
-    }
 
     // Check that X and Y angle calculation is disabled
     if (getAngleEn() != TMAG5273_NO_ANGLE_CALCULATION)
-    {
         return 0;
-    }
 
     // returns true if all the checks pass
     return 1;
@@ -97,98 +84,14 @@ int8_t TMAG5273::begin(uint8_t sensorAddress, TwoWire &wirePort)
 /// @return Error code (0 is success, negative is failure)
 int8_t TMAG5273::isConnected()
 {
-    // make sure the TMAG will acknowledge over I2C
-    _i2cPort->beginTransmission(_deviceAddress);
-    if (_i2cPort->endTransmission() != 0)
-    {
+    // Ping the I2C bus to make sure it's connected
+    if (_theI2CBus.ping() != ksfTkErrOk)
         return -1;
-    }
 
     if (getManufacturerID() != TMAG5273_DEVICE_ID_VALUE)
-    {
         return -1;
-    }
 
     return 0;
-}
-
-/// @brief Reads the register bytes from the sensor when called upon. This reads
-/// 2 bytes of information from the 16-bit register
-/// @param regAddress Register's address to read from
-/// @param dataBuffer Pointer to the data location being read to
-/// @param numBytes Number of bytes to read
-/// @return Error code (0 is success, negative is failure)
-int8_t TMAG5273::readRegisters(uint8_t regAddress, uint8_t *dataBuffer, uint8_t numBytes)
-{
-    // uint8_t _deviceAddress = 0X22;
-    //  Jump to desired register address
-    Wire.beginTransmission(_deviceAddress);
-    Wire.write(regAddress);
-    if (Wire.endTransmission())
-    {
-        return -1;
-    }
-
-    // Read bytes from these registers
-    Wire.requestFrom(_deviceAddress, numBytes);
-
-    // Store all requested bytes
-    for (uint8_t i = 0; i < numBytes && Wire.available(); i++)
-    {
-        dataBuffer[i] = Wire.read();
-    }
-
-    return 0;
-}
-
-/// @brief Reads a register region from a device.
-/// @param regAddress I2C address of device
-/// @param dataBuffer Pointer to byte to store read data
-/// @param numBytes Number of bytes to write
-/// @return Error code (0 is success, negative is failure, positive is warning)
-int8_t TMAG5273::writeRegisters(uint8_t regAddress, uint8_t *dataBuffer, uint8_t numBytes)
-{
-    // uint8_t _deviceAddress = 0X22;
-    //  Begin transmission
-    Wire.beginTransmission(_deviceAddress);
-
-    // Write the address
-    Wire.write(regAddress);
-
-    // Write all the data
-    for (uint8_t i = 0; i < numBytes; i++)
-    {
-        Wire.write(dataBuffer[i]);
-    }
-
-    // End transmission
-    if (Wire.endTransmission())
-    {
-        return -1;
-    }
-
-    return 0;
-}
-
-/// @brief Reads the register byte from the sensor when called upon.
-/// @param regAddress Register's address to read from
-/// @return Value of the register chosen to be read from
-uint8_t TMAG5273::readRegister(uint8_t regAddress)
-{
-    uint8_t regVal = 0;
-    readRegisters(regAddress, &regVal, 2);
-    return regVal;
-}
-
-/// @brief Reads a register region from a device.
-/// @param regAddress I2C address of device
-/// @param data Value to fill register with
-/// @return Error code (0 is success, negative is failure, positive is warning)
-uint8_t TMAG5273::writeRegister(uint8_t regAddress, uint8_t data)
-{
-    // Write 1 byte to writeRegisters()
-    writeRegisters(regAddress, &data, 1);
-    return data;
 }
 
 /// @brief Write to the correct registers the correct values to
@@ -199,8 +102,13 @@ uint8_t TMAG5273::writeRegister(uint8_t regAddress, uint8_t data)
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setupWakeUpAndSleep()
 {
-    writeRegister(TMAG5273_REG_INT_CONFIG_1, 0X64);
-    writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, 0X23);
+    sfTkError_t rc = _theI2CBus.writeRegister(TMAG5273_REG_INT_CONFIG_1, (uint8_t)0x64);
+    if (rc != ksfTkErrOk)
+        return -1;
+
+    rc = _theI2CBus.writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, (uint8_t)0x23);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     return getError();
 }
@@ -215,8 +123,12 @@ int8_t TMAG5273::setupWakeUpAndSleep()
 int8_t TMAG5273::readWakeUpAndSleepData(float *xVal, float *yVal, float *zVal, float *temperature)
 {
     uint8_t wakeupRegisterRead[8];
+    size_t nRead = 0;
+
     // Read 4 bits of data
-    readRegisters(TMAG5273_REG_T_MSB_RESULT, wakeupRegisterRead, 4);
+    sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_T_MSB_RESULT, wakeupRegisterRead, 4, nRead);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     // Need to get the values to themselves (bitwise operation)
     *zVal = (wakeupRegisterRead[6] << 8) & wakeupRegisterRead[7];
@@ -260,65 +172,72 @@ int8_t TMAG5273::readWakeUpAndSleepData(float *xVal, float *yVal, float *zVal, f
 int8_t TMAG5273::setCRCMode(uint8_t crcMode)
 {
     uint8_t mode = 0;
-    mode = readRegister(TMAG5273_REG_DEVICE_CONFIG_1);
+    sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     // If-Else statement for writing values to the register, bit by bit
     if (crcMode == 0)
     {
         // adds the crcMode (0 or 1) to bit 7 in the register
         bitWrite(mode, 7, 0);
-        // Writes new register value to reg
-        writeRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     }
-
     else if (crcMode == 1)
     {
         // adds the crc_mode (0 or 1) to bit 7 in the register
         bitWrite(mode, 7, 1);
-        // Writes new register value to reg
-        writeRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     }
+    else
+        return -1; // invalid crcMode
+
+    rc = _theI2CBus.writeRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
     return getError();
 }
 
 /// @brief Sets the temperature coefficient of the magnet
 /// @param magTempMode value to set the temp coefficient of the device
-///     0X0 = 0% (No temperature compensation)
-///     X1 = 0.12%/deg C (NdBFe)
-///     0X2 = Reserved
-///     0X3 = 0.2%/deg C (Ceramic)
+///     0x0 = 0% (No temperature compensation)
+///     0x1 = 0.12%/deg C (NdBFe)
+///     0x2 = Reserved
+///     0x3 = 0.2%/deg C (Ceramic)
 ///     TMAG5273_REG_DEVICE_CONFIG_1 - bit 6-5
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setMagTemp(uint8_t magTempMode)
 {
-    uint16_t mode = 0;
-    mode = readRegister(TMAG5273_REG_DEVICE_CONFIG_1);
+    uint8_t mode = 0;
+    sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     // If-Else statement for writing values to the register, bit by bit
     if (magTempMode == 0) // 0b00
     {
         bitWrite(mode, 6, 0);
         bitWrite(mode, 5, 0);
-        writeRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     }
     else if (magTempMode == 0x1) // 0b01
     {
         bitWrite(mode, 6, 0);
         bitWrite(mode, 5, 1);
-        writeRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     }
     else if (magTempMode == 0x2) // 0b10
     {
         bitWrite(mode, 6, 1);
         bitWrite(mode, 5, 0);
-        writeRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     }
     else if (magTempMode == 0x3) // 0b11
     {
         bitWrite(mode, 6, 1);
         bitWrite(mode, 5, 1);
-        writeRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     }
+    else
+        return -1; // invalid magTempMode
+
+    rc = _theI2CBus.writeRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
     return getError();
 }
 
@@ -336,7 +255,10 @@ int8_t TMAG5273::setMagTemp(uint8_t magTempMode)
 int8_t TMAG5273::setConvAvg(uint8_t avgMode)
 {
     uint8_t mode = 0;
-    mode = readRegister(TMAG5273_REG_DEVICE_CONFIG_1);
+
+    sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     // If-Else statement for writing values to the register, bit by bit
     if (avgMode == 0) // 0b000
@@ -344,43 +266,43 @@ int8_t TMAG5273::setConvAvg(uint8_t avgMode)
         bitWrite(mode, 2, 0);
         bitWrite(mode, 3, 0);
         bitWrite(mode, 4, 0);
-        writeRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     }
     else if (avgMode == 0x1) // 0b001
     {
         bitWrite(mode, 2, 1);
         bitWrite(mode, 3, 0);
         bitWrite(mode, 4, 0);
-        writeRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     }
     else if (avgMode == 0x2) // 0b010
     {
         bitWrite(mode, 2, 0);
         bitWrite(mode, 3, 1);
         bitWrite(mode, 4, 0);
-        writeRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     }
     else if (avgMode == 0x3) // 0b011
     {
         bitWrite(mode, 2, 1);
         bitWrite(mode, 3, 1);
         bitWrite(mode, 4, 0);
-        writeRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     }
     else if (avgMode == 0x4) // 0b100
     {
         bitWrite(mode, 2, 0);
         bitWrite(mode, 3, 0);
         bitWrite(mode, 4, 1);
-        writeRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     }
     else if (avgMode == 0x5) // 0b101
     {
         bitWrite(mode, 2, 1);
         bitWrite(mode, 3, 0);
         bitWrite(mode, 4, 1);
-        writeRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     }
+    else
+        return -1; // invalid avgMode
+
+    rc = _theI2CBus.writeRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     return getError();
 }
@@ -397,7 +319,10 @@ int8_t TMAG5273::setConvAvg(uint8_t avgMode)
 int8_t TMAG5273::setReadMode(uint8_t readMode)
 {
     uint8_t mode = 0;
-    mode = readRegister(TMAG5273_REG_DEVICE_CONFIG_1);
+
+    sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     // Write values to the register, bit by bit
     if (readMode == 0)
@@ -415,6 +340,12 @@ int8_t TMAG5273::setReadMode(uint8_t readMode)
         bitWrite(mode, 0, 0);
         bitWrite(mode, 1, 1);
     }
+    else
+        return -1; // invalid readMode
+
+    rc = _theI2CBus.writeRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     return getError();
 }
@@ -431,8 +362,11 @@ int8_t TMAG5273::setReadMode(uint8_t readMode)
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setIntThreshold(uint8_t threshold)
 {
-    uint16_t mode = 0;
-    mode = readRegister(TMAG5273_REG_DEVICE_CONFIG_2);
+    uint8_t mode = 0;
+
+    sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     // If-Else statement for writing values to the register, bit by bit
     if (threshold == 0) // 0b00
@@ -443,7 +377,6 @@ int8_t TMAG5273::setIntThreshold(uint8_t threshold)
         bitWrite(mode, 6, 0);
         // Writes a 0 to bit 5
         bitWrite(mode, 5, 0);
-        writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
     }
     else if (threshold == 0x1) // 0b001
     {
@@ -453,8 +386,13 @@ int8_t TMAG5273::setIntThreshold(uint8_t threshold)
         bitWrite(mode, 6, 0);
         // Writes a 1 to bit 5
         bitWrite(mode, 5, 1);
-        writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
     }
+    else
+        return -1; // invalid threshold
+
+    rc = _theI2CBus.writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     return getError();
 }
@@ -467,22 +405,28 @@ int8_t TMAG5273::setIntThreshold(uint8_t threshold)
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setLowPower(uint8_t lpLnMode)
 {
-    uint16_t mode = 0;
-    mode = readRegister(TMAG5273_REG_DEVICE_CONFIG_2);
+    uint8_t mode = 0;
+
+    sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     // If-Else statement for writing values to the register, bit by bit
     if (lpLnMode == 0) // 0b0
     {
         // 0b0 - Low active current mode
         bitWrite(mode, 4, 0);
-        // Writes new value to register
-        writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
     }
     else if (lpLnMode == 1) // 0b1 - Low noise mode
     {
         bitWrite(mode, 4, 1);
-        writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
     }
+    else
+        return -1; // invalid lpLnMode
+
+    rc = _theI2CBus.writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     return getError();
 }
@@ -495,22 +439,28 @@ int8_t TMAG5273::setLowPower(uint8_t lpLnMode)
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setGlitchFilter(uint8_t glitchMode)
 {
-    uint16_t mode = 0;
-    mode = readRegister(TMAG5273_REG_DEVICE_CONFIG_2);
+    uint8_t mode = 0;
+
+    sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     // If-Else statement for writing values to the register, bit by bit
     if (glitchMode == 0) // 0b0 - Glitch filter on
     {
         // Writes 0 to glitch filter bit
         bitWrite(mode, 3, 0);
-        // Writes new register value to reg
-        writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
     }
     else if (glitchMode == 1) // 0b1 - Glitch filter off
     {
         bitWrite(mode, 3, 1);
-        writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
     }
+    else
+        return -1; // invalid glitchMode
+
+    rc = _theI2CBus.writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     return getError();
 }
@@ -526,20 +476,27 @@ int8_t TMAG5273::setGlitchFilter(uint8_t glitchMode)
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setTriggerMode(uint8_t trigMode)
 {
-    uint16_t mode = 0;
-    mode = readRegister(TMAG5273_REG_DEVICE_CONFIG_2);
+    uint8_t mode = 0;
+
+    sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     // If-Else statement for writing values to the register, bit by bit
     if (trigMode == 0) // 0b0
     {
         bitWrite(mode, 2, 0);
-        writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
     }
     else if (trigMode == 0X1) // 0b1
     {
         bitWrite(mode, 2, 1);
-        writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
     }
+    else
+        return -1; // invalid glitchMode
+
+    rc = _theI2CBus.writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     return getError();
 }
@@ -556,8 +513,11 @@ int8_t TMAG5273::setTriggerMode(uint8_t trigMode)
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setOperatingMode(uint8_t opMode)
 {
-    uint16_t mode = 0;
-    mode = readRegister(TMAG5273_REG_DEVICE_CONFIG_2);
+    uint8_t mode = 0;
+
+    sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     // If-Else statement for writing values to the register, bit by bit
     if (opMode == 0) // 0b00
@@ -566,7 +526,6 @@ int8_t TMAG5273::setOperatingMode(uint8_t opMode)
         bitWrite(mode, 0, 0);
         // Write 0 to bit 1
         bitWrite(mode, 1, 0);
-        writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
     }
     else if (opMode == 0X1) // 0b01
     {
@@ -574,20 +533,23 @@ int8_t TMAG5273::setOperatingMode(uint8_t opMode)
         bitWrite(mode, 0, 1);
         // Write 0 to bit 1
         bitWrite(mode, 1, 0);
-        writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
     }
     else if (opMode == 0X2) // 0b10
     {
         bitWrite(mode, 0, 0);
         bitWrite(mode, 1, 1);
-        writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
     }
     else if (opMode == 0X3) // 0b11
     {
         bitWrite(mode, 0, 1);
         bitWrite(mode, 1, 1);
-        writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
     }
+    else
+        return -1; // invalid glitchMode
+
+    rc = _theI2CBus.writeRegister(TMAG5273_REG_DEVICE_CONFIG_2, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     return getError();
 }
@@ -611,8 +573,11 @@ int8_t TMAG5273::setOperatingMode(uint8_t opMode)
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setMagneticChannel(uint8_t channelMode)
 {
-    uint16_t mode = 0;
-    mode = readRegister(TMAG5273_REG_SENSOR_CONFIG_1);
+    uint8_t mode = 0;
+
+    sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     // If-Else statement for writing values to the register, bit by bit
     if (channelMode == 0X0) // 0b0000
@@ -625,9 +590,6 @@ int8_t TMAG5273::setMagneticChannel(uint8_t channelMode)
         bitWrite(mode, 6, 0);
         // Writes 0 to bit 7 of the register
         bitWrite(mode, 7, 0);
-        // Writes the new register value back into TMAG5273_REG_SENSOR_CONFIG_1
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
-        // writeRegisterRegion(TMAG5273_REG_SENSOR_CONFIG_1, mode, 0);
     }
     else if (channelMode == 0X1) // 0x0001
     {
@@ -635,7 +597,6 @@ int8_t TMAG5273::setMagneticChannel(uint8_t channelMode)
         bitWrite(mode, 5, 0);
         bitWrite(mode, 6, 0);
         bitWrite(mode, 7, 0);
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (channelMode == 0X2) // 0x0010
     {
@@ -643,7 +604,6 @@ int8_t TMAG5273::setMagneticChannel(uint8_t channelMode)
         bitWrite(mode, 5, 1);
         bitWrite(mode, 6, 0);
         bitWrite(mode, 7, 0);
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (channelMode == 0X3) // 0x0011
     {
@@ -651,7 +611,6 @@ int8_t TMAG5273::setMagneticChannel(uint8_t channelMode)
         bitWrite(mode, 5, 1);
         bitWrite(mode, 6, 0);
         bitWrite(mode, 7, 0);
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (channelMode == 0X4) // 0x0100
     {
@@ -659,7 +618,6 @@ int8_t TMAG5273::setMagneticChannel(uint8_t channelMode)
         bitWrite(mode, 5, 0);
         bitWrite(mode, 6, 1);
         bitWrite(mode, 7, 0);
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (channelMode == 0X5) // 0x0101
     {
@@ -667,7 +625,6 @@ int8_t TMAG5273::setMagneticChannel(uint8_t channelMode)
         bitWrite(mode, 5, 0);
         bitWrite(mode, 6, 1);
         bitWrite(mode, 7, 0);
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (channelMode == 0X6) // 0x0110
     {
@@ -675,7 +632,6 @@ int8_t TMAG5273::setMagneticChannel(uint8_t channelMode)
         bitWrite(mode, 5, 1);
         bitWrite(mode, 6, 1);
         bitWrite(mode, 7, 0);
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (channelMode == 0X7) // 0x0111
     {
@@ -683,7 +639,6 @@ int8_t TMAG5273::setMagneticChannel(uint8_t channelMode)
         bitWrite(mode, 5, 1);
         bitWrite(mode, 6, 1);
         bitWrite(mode, 7, 0);
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (channelMode == 0X8) // 0x1000
     {
@@ -691,7 +646,6 @@ int8_t TMAG5273::setMagneticChannel(uint8_t channelMode)
         bitWrite(mode, 5, 0);
         bitWrite(mode, 6, 0);
         bitWrite(mode, 7, 1);
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (channelMode == 0X9) // 0x1001
     {
@@ -699,7 +653,6 @@ int8_t TMAG5273::setMagneticChannel(uint8_t channelMode)
         bitWrite(mode, 5, 0);
         bitWrite(mode, 6, 0);
         bitWrite(mode, 7, 1);
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (channelMode == 0XA) // 0x1010
     {
@@ -707,7 +660,6 @@ int8_t TMAG5273::setMagneticChannel(uint8_t channelMode)
         bitWrite(mode, 5, 1);
         bitWrite(mode, 6, 0);
         bitWrite(mode, 7, 1);
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (channelMode == 0XB) // 0x1011
     {
@@ -715,8 +667,13 @@ int8_t TMAG5273::setMagneticChannel(uint8_t channelMode)
         bitWrite(mode, 5, 1);
         bitWrite(mode, 6, 0);
         bitWrite(mode, 7, 1);
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
+    else
+        return -1; // invalid channelMode
+
+    rc = _theI2CBus.writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     return getError();
 }
@@ -741,8 +698,11 @@ int8_t TMAG5273::setMagneticChannel(uint8_t channelMode)
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
 {
-    uint16_t mode = 0;
-    mode = readRegister(TMAG5273_REG_SENSOR_CONFIG_1);
+    uint8_t mode = 0;
+
+    sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     if (sleepTime == 0X0) // 0b0000
     {
@@ -750,7 +710,6 @@ int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
         bitWrite(mode, 1, 0);
         bitWrite(mode, 2, 0);
         bitWrite(mode, 3, 0);
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (sleepTime == 0X1) // 0b0001
     {
@@ -758,7 +717,6 @@ int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
         bitWrite(mode, 1, 0);
         bitWrite(mode, 2, 0);
         bitWrite(mode, 3, 0);
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (sleepTime == 0X2) // 0b0010
     {
@@ -766,7 +724,6 @@ int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
         bitWrite(mode, 1, 1);
         bitWrite(mode, 2, 0);
         bitWrite(mode, 3, 0);
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (sleepTime == 0X3) // 0b0011
     {
@@ -774,7 +731,6 @@ int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
         bitWrite(mode, 1, 1);
         bitWrite(mode, 2, 0);
         bitWrite(mode, 3, 0);
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (sleepTime == 0X4) // 0b0100
     {
@@ -782,7 +738,6 @@ int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
         bitWrite(mode, 1, 0);
         bitWrite(mode, 2, 1);
         bitWrite(mode, 3, 0);
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (sleepTime == 0X5) // 0b0101
     {
@@ -790,7 +745,6 @@ int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
         bitWrite(mode, 1, 0);
         bitWrite(mode, 2, 1);
         bitWrite(mode, 3, 0);
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (sleepTime == 0X6) // 0b0110
     {
@@ -798,7 +752,6 @@ int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
         bitWrite(mode, 1, 1);
         bitWrite(mode, 2, 1);
         bitWrite(mode, 3, 0);
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (sleepTime == 0X7) // 0b0111
     {
@@ -806,7 +759,6 @@ int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
         bitWrite(mode, 1, 1);
         bitWrite(mode, 2, 1);
         bitWrite(mode, 3, 0);
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (sleepTime == 0X8) // 0b1000
     {
@@ -814,7 +766,6 @@ int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
         bitWrite(mode, 1, 0);
         bitWrite(mode, 2, 0);
         bitWrite(mode, 3, 1);
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (sleepTime == 0X9) // 0b1001
     {
@@ -822,7 +773,6 @@ int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
         bitWrite(mode, 1, 0);
         bitWrite(mode, 2, 0);
         bitWrite(mode, 3, 1);
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (sleepTime == 0XA) // 0b1010
     {
@@ -830,7 +780,6 @@ int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
         bitWrite(mode, 1, 1);
         bitWrite(mode, 2, 0);
         bitWrite(mode, 3, 1);
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (sleepTime == 0XB) // 0b1011
     {
@@ -838,7 +787,6 @@ int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
         bitWrite(mode, 1, 1);
         bitWrite(mode, 2, 0);
         bitWrite(mode, 3, 1);
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
     else if (sleepTime == 0XC) // 0b1100
     {
@@ -846,8 +794,13 @@ int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
         bitWrite(mode, 1, 0);
         bitWrite(mode, 2, 1);
         bitWrite(mode, 3, 1);
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     }
+    else
+        return -1; // invalid channelMode
+
+    rc = _theI2CBus.writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     return getError();
 }
@@ -861,22 +814,28 @@ int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setMagDir(uint8_t threshDir)
 {
-    uint16_t mode = 0;
-    mode = readRegister(TMAG5273_REG_SENSOR_CONFIG_2);
+    uint8_t mode = 0;
+
+    sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     // If-Else statement for writing values to the register, bit by bit
     if (threshDir == 0X0) // 0b0
     {
         // Write 0 to bit 5 of the register value
         bitWrite(mode, 5, 0);
-        // Writes mode to the CONFIG_2 register
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
     }
     else if (threshDir == 0X1) // 0b1
     {
         bitWrite(mode, 5, 1);
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
     }
+    else
+        return -1; // invalid threshDir
+
+    rc = _theI2CBus.writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     return getError();
 }
@@ -890,22 +849,27 @@ int8_t TMAG5273::setMagDir(uint8_t threshDir)
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setMagnitudeGain(uint8_t gainAdjust)
 {
-    uint16_t mode = 0;
-    mode = readRegister(TMAG5273_REG_SENSOR_CONFIG_2);
+    uint8_t mode = 0;
+    sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     // If-Else statement for writing values to the register, bit by bit
     if (gainAdjust == 0X0) // 0b0
     {
         // Write 0 to bit 4 of the register value
         bitWrite(mode, 4, 0);
-        // Writes mode to the CONFIG_2 register
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
     }
     else if (gainAdjust == 0X1) // 0b1
     {
         bitWrite(mode, 4, 1);
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
     }
+    else
+        return -1; // invalid threshDir
+
+    rc = _theI2CBus.writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     return getError();
 }
@@ -924,9 +888,11 @@ int8_t TMAG5273::setMagneticGain(float magneticGain)
     // Convert magneticGain to be the correct value to write to their register
     int8_t magneticGainReg = 0;
     magneticGainReg = magneticGain / 256;
+    // deal with int/uint conversion
+    uint8_t tempWrite = *(uint8_t *)&magneticGainReg;
 
-    // Write value to register
-    writeRegister(TMAG5273_REG_MAG_GAIN_CONFIG, magneticGainReg);
+    if (_theI2CBus.writeRegister(TMAG5273_REG_MAG_GAIN_CONFIG, tempWrite) != ksfTkErrOk)
+        return -1;
 
     return getError();
 }
@@ -953,7 +919,11 @@ int8_t TMAG5273::setMagneticOffset1(float offset1)
 
     // Multiply bit resolution with entered value from datasheet
     int8_t magOffset = (2048 * offset1) / range; // 2048 = 2^12
-    writeRegister(TMAG5273_REG_MAG_OFFSET_CONFIG_1, magOffset);
+
+    // deal with int/uint conversion
+    uint8_t tempWrite = *(uint8_t *)&magOffset;
+    if (_theI2CBus.writeRegister(TMAG5273_REG_MAG_OFFSET_CONFIG_1, tempWrite) != ksfTkErrOk)
+        return -1;
 
     return getError();
 }
@@ -1017,8 +987,13 @@ int8_t TMAG5273::setMagneticOffset2(float offset2)
 
     // Multiply bit resolution with entered value
     int8_t magOffset = (2048 * offset2) / range; // 2048 = 2^12
+
+    // deal with int/uint conversion
+    uint8_t tempWrite = *(uint8_t *)&magOffset;
+
     // Write correct value to register
-    writeRegister(TMAG5273_REG_MAG_OFFSET_CONFIG_2, magOffset);
+    if (_theI2CBus.writeRegister(TMAG5273_REG_MAG_OFFSET_CONFIG_2, tempWrite) != ksfTkErrOk)
+        return -1;
 
     return getError();
 }
@@ -1035,8 +1010,11 @@ int8_t TMAG5273::setMagneticOffset2(float offset2)
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setAngleEn(uint8_t angleEnable)
 {
-    uint16_t mode = 0;
-    mode = readRegister(TMAG5273_REG_SENSOR_CONFIG_2);
+    uint8_t mode = 0;
+
+    sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     // If-Else statement for writing values to the register, bit by bit
     if (angleEnable == 0X0) // 0b00
@@ -1045,30 +1023,28 @@ int8_t TMAG5273::setAngleEn(uint8_t angleEnable)
         bitWrite(mode, 2, 0);
         // Write 0 to bit 3 of the register value
         bitWrite(mode, 3, 0);
-        // Writes mode to the CONFIG_2 register
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
     }
     else if (angleEnable == 0X1) // 0b01
     {
         bitWrite(mode, 2, 1);
         bitWrite(mode, 3, 0);
-        // Writes mode to the CONFIG_2 register
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
     }
     else if (angleEnable == 0X2) // 0b10
     {
         bitWrite(mode, 2, 0);
         bitWrite(mode, 3, 1);
-        // Writes mode to the CONFIG_2 register
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
     }
     else if (angleEnable == 0X3) // 0b11
     {
         bitWrite(mode, 2, 1);
         bitWrite(mode, 3, 1);
-        // Writes mode to the CONFIG_2 register
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
     }
+    else
+        return -1; // invalid angleEnable
+
+    rc = _theI2CBus.writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     return getError();
 }
@@ -1081,22 +1057,28 @@ int8_t TMAG5273::setAngleEn(uint8_t angleEnable)
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setXYAxisRange(uint8_t xyAxisRange)
 {
-    uint16_t mode = 0;
-    mode = readRegister(TMAG5273_REG_SENSOR_CONFIG_2);
+    uint8_t mode = 0;
+
+    sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     // If-Else statement for writing values to the register, bit by bit
     if (xyAxisRange == 0X0) // 0b0
     {
         // Write 0 to bit 1 of the register value
         bitWrite(mode, 1, 0);
-        // Writes mode to the CONFIG_2 register
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
     }
     else if (xyAxisRange == 0X1) // 0b1
     {
         bitWrite(mode, 1, 1);
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
     }
+    else
+        return -1; // invalid angleEnable
+
+    rc = _theI2CBus.writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     return getError();
 }
@@ -1109,22 +1091,28 @@ int8_t TMAG5273::setXYAxisRange(uint8_t xyAxisRange)
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setZAxisRange(uint8_t zAxisRange)
 {
-    uint16_t mode = 0;
-    mode = readRegister(TMAG5273_REG_SENSOR_CONFIG_2);
+    uint8_t mode = 0;
+
+    sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     // If-Else statement for writing values to the register, bit by bit
     if (zAxisRange == 0X0) // 0b0
     {
         // Write 0 to bit 0 of the register value
         bitWrite(mode, 0, 0);
-        // Writes mode to the CONFIG_2 register
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
     }
     else if (zAxisRange == 0X1) // 0b1
     {
         bitWrite(mode, 0, 1);
-        writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
     }
+    else
+        return -1; // invalid angleEnable
+
+    rc = _theI2CBus.writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     return getError();
 }
@@ -1142,8 +1130,11 @@ int8_t TMAG5273::setXThreshold(float xThreshold)
     // Mulyiply raw value by threshold equation in datasheet
     int8_t threshold = xThreshold * 128 / (40 * (1 + range));
 
+    // deal with int/uint conversion
+    uint8_t tempWrite = *(uint8_t *)&threshold;
     // Write the correct value to the register
-    writeRegister(TMAG5273_REG_X_THR_CONFIG, threshold);
+    if (_theI2CBus.writeRegister(TMAG5273_REG_X_THR_CONFIG, tempWrite) != ksfTkErrOk)
+        return -1;
 
     return getError();
 }
@@ -1160,8 +1151,12 @@ int8_t TMAG5273::setYThreshold(float yThreshold)
     uint8_t range = getXYAxisRange();
     // Mulyiply raw value by threshold equation in datasheet
     int8_t threshold = yThreshold * 128 / (40 * (1 + range));
+
+    // deal with int/uint conversion
+    uint8_t tempWrite = *(uint8_t *)&threshold;
     // Write the correct value to the register
-    writeRegister(TMAG5273_REG_Y_THR_CONFIG, threshold);
+    if (_theI2CBus.writeRegister(TMAG5273_REG_Y_THR_CONFIG, tempWrite) != ksfTkErrOk)
+        return -1;
 
     return getError();
 }
@@ -1179,23 +1174,31 @@ int8_t TMAG5273::setZThreshold(float zThreshold)
     uint8_t range = getZAxisRange();
     // Mulyiply raw value by threshold equation in datasheet
     int8_t threshold = zThreshold * 128 / (40 * (1 + range));
+
+    // deal with int/uint conversion
+    uint8_t tempWrite = *(uint8_t *)&threshold;
+
     // Write the correct value to the register
-    writeRegister(TMAG5273_REG_Z_THR_CONFIG, threshold);
+    if (_theI2CBus.writeRegister(TMAG5273_REG_Z_THR_CONFIG, tempWrite) != ksfTkErrOk)
+        return -1;
 
     return getError();
 }
 
 /// @brief Sets the temperature threshold code entered by the user. The
-///  valid temperature threshold ranges are -41C to 170C.
+///  valid temperature threshold ranges are -41C to 170C with the threshold codes
+///  for -41C = 1Ah, and 170C = 34h. Resolution is 8 degree C/ LSB
 ///  Default 0x0 means no threshold comparison.
 /// @param tempThresh 8-bit value to set the threshold for the temperature limit
 ///     TMAG5273_REG_T_CONFIG - bits 7-1
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setTemperatureThreshold(int8_t tempThresh)
 {
-    // Write the new address into the register and enable the temperature to be read 
-    // NOTE: Temperature is set to be enabled here for temperatures readings. 
-    writeRegister(TMAG5273_REG_T_CONFIG, (tempThresh << 1) | 0x01);
+    // Write the new address into the register and enable the temperature to be read
+    // NOTE: Temperature is set to be enabled here for temperatures readings.
+    uint8_t tmp = (tempThresh << 1) | 0x01;
+    if (_theI2CBus.writeRegister(TMAG5273_REG_T_CONFIG, tmp) != ksfTkErrOk)
+        return -1;
 
     return getError();
 }
@@ -1209,22 +1212,28 @@ int8_t TMAG5273::setTemperatureThreshold(int8_t tempThresh)
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setTemperatureEn(bool temperatureEnable)
 {
-    uint16_t mode = 0;
-    mode = readRegister(TMAG5273_REG_T_CONFIG);
+    uint8_t mode = 0;
+
+    sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_T_CONFIG, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     // If-Else statement for writing values to the register, bit by bit
     if (temperatureEnable == 0) // 0b0
     {
         // Write 0 to bit 7 of the register value
         bitWrite(mode, 0, 0);
-        // Writes mode to the T_CONFIG register
-        writeRegister(TMAG5273_REG_T_CONFIG, mode);
     }
     else if (temperatureEnable == 1) // 0b1
     {
         bitWrite(mode, 0, 1);
-        writeRegister(TMAG5273_REG_T_CONFIG, mode);
     }
+    else
+        return -1; // invalid temperatureEnable
+
+    rc = _theI2CBus.writeRegister(TMAG5273_REG_T_CONFIG, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     return getError();
 }
@@ -1239,22 +1248,28 @@ int8_t TMAG5273::setTemperatureEn(bool temperatureEnable)
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setInterruptResult(bool interruptEnable)
 {
-    uint16_t mode = 0;
-    mode = readRegister(TMAG5273_REG_INT_CONFIG_1);
+    uint8_t mode = 0;
+
+    sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_INT_CONFIG_1, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     // If-Else statement for writing values to the register, bit by bit
     if (interruptEnable == 0) // 0b0
     {
         // Write 0 to bit 7 of the register value
         bitWrite(mode, 7, 0);
-        // Writes mode to the CONFIG_1 register
-        writeRegister(TMAG5273_REG_INT_CONFIG_1, mode);
     }
     else if (interruptEnable == 1) // 0b1
     {
         bitWrite(mode, 7, 1);
-        writeRegister(TMAG5273_REG_INT_CONFIG_1, mode);
     }
+    else
+        return -1; // invalid interruptEnable
+
+    rc = _theI2CBus.writeRegister(TMAG5273_REG_INT_CONFIG_1, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     return getError();
 }
@@ -1268,22 +1283,28 @@ int8_t TMAG5273::setInterruptResult(bool interruptEnable)
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setThresholdEn(bool enableInterruptResponse)
 {
-    uint16_t mode = 0;
-    mode = readRegister(TMAG5273_REG_INT_CONFIG_1);
+    uint8_t mode = 0;
+
+    sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_INT_CONFIG_1, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     // If-Else statement for writing values to the register, bit by bit
     if (enableInterruptResponse == 0) // 0b0
     {
         // Write 0 to bit 6 of the register value
         bitWrite(mode, 6, 0);
-        // Writes mode to the CONFIG_2 register
-        writeRegister(TMAG5273_REG_INT_CONFIG_1, mode);
     }
     else if (enableInterruptResponse == 1) // 0b1
     {
         bitWrite(mode, 6, 1);
-        writeRegister(TMAG5273_REG_INT_CONFIG_1, mode);
     }
+    else
+        return -1; // invalid enableInterruptResponse
+
+    rc = _theI2CBus.writeRegister(TMAG5273_REG_INT_CONFIG_1, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     return getError();
 }
@@ -1297,22 +1318,28 @@ int8_t TMAG5273::setThresholdEn(bool enableInterruptResponse)
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setIntPinState(bool interruptState)
 {
-    uint16_t mode = 0;
-    mode = readRegister(TMAG5273_REG_INT_CONFIG_1);
+    uint8_t mode = 0;
+
+    sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_INT_CONFIG_1, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     // If-Else statement for writing values to the register, bit by bit
     if (interruptState == 0) // 0b0
     {
         // Write 0 to bit 5 of the register value
         bitWrite(mode, 5, 0);
-        // Writes mode to the CONFIG_2 register
-        writeRegister(TMAG5273_REG_INT_CONFIG_1, mode);
     }
     else if (interruptState == 1) // 0b1
     {
         bitWrite(mode, 5, 1);
-        writeRegister(TMAG5273_REG_INT_CONFIG_1, mode);
     }
+    else
+        return -1; // invalid interruptState
+
+    rc = _theI2CBus.writeRegister(TMAG5273_REG_INT_CONFIG_1, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     return getError();
 }
@@ -1328,8 +1355,11 @@ int8_t TMAG5273::setIntPinState(bool interruptState)
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setInterruptMode(uint8_t configurationMode)
 {
-    uint16_t mode = 0;
-    mode = readRegister(TMAG5273_REG_INT_CONFIG_1);
+    uint8_t mode = 0;
+
+    sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_INT_CONFIG_1, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     // If-Else statement for writing values to the register, bit by bit
     if ((configurationMode == 0X0) || (configurationMode == 0X1) || (configurationMode == 0X2) ||
@@ -1340,7 +1370,9 @@ int8_t TMAG5273::setInterruptMode(uint8_t configurationMode)
         // Make sure all of the INT mode bits are set to 0
         mode = mode & 0XE3;
         mode = mode | config;
-        writeRegister(TMAG5273_REG_INT_CONFIG_1, mode);
+        rc = _theI2CBus.writeRegister(TMAG5273_REG_INT_CONFIG_1, mode);
+        if (rc != ksfTkErrOk)
+            return -1;
     }
 
     return getError();
@@ -1354,22 +1386,28 @@ int8_t TMAG5273::setInterruptMode(uint8_t configurationMode)
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setMaskInterrupt(bool interruptPinEnable)
 {
-    uint16_t mode = 0;
-    mode = readRegister(TMAG5273_REG_INT_CONFIG_1);
+    uint8_t mode = 0;
+
+    sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_INT_CONFIG_1, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     // If-Else statement for writing values to the register, bit by bit
     if (interruptPinEnable == 0) // 0b0
     {
         // Write 0 to bit 1 of the register value
         bitWrite(mode, 0, 0);
-        // Writes mode to the CONFIG_2 register
-        writeRegister(TMAG5273_REG_INT_CONFIG_1, mode);
     }
     else if (interruptPinEnable == 1) // 0b1
     {
         bitWrite(mode, 0, 1);
-        writeRegister(TMAG5273_REG_INT_CONFIG_1, mode);
     }
+    else
+        return -1; // invalid interruptPinEnable
+
+    rc = _theI2CBus.writeRegister(TMAG5273_REG_INT_CONFIG_1, mode);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     return getError();
 }
@@ -1388,9 +1426,11 @@ int8_t TMAG5273::setMaskInterrupt(bool interruptPinEnable)
 int8_t TMAG5273::setI2CAddress(uint8_t address)
 {
     // Write the new address into the register and enable the register to be read
-    writeRegister(TMAG5273_REG_I2C_ADDRESS, (address << 1) | 0x01);
+    uint8_t validAddress = (address << 1) | 0x01; // Make sure address is 7 bits
+    if (_theI2CBus.writeRegister(TMAG5273_REG_I2C_ADDRESS, validAddress) != ksfTkErrOk)
+        return -1;
     // Set the device address to the new address chosen
-    _deviceAddress = address;
+    _theI2CBus.setAddress(address);
 
     return getError();
 }
@@ -1403,22 +1443,17 @@ int8_t TMAG5273::setI2CAddress(uint8_t address)
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setI2CAddressEN(bool addressEnable)
 {
-    uint16_t addReg = 0;
-    addReg = readRegister(TMAG5273_REG_I2C_ADDRESS);
+    uint8_t addReg = 0;
 
-    // If-Else statement for writing values to the register, bit by bit
-    if (addressEnable == 0)
-    {
-        // Write 0 to bit 0 of register
-        bitWrite(addReg, 0, 0);
-        writeRegister(TMAG5273_REG_I2C_ADDRESS, addReg);
-    }
-    else if (addressEnable == 1)
-    {
-        // Write 1 to bit 0 of register
-        bitWrite(addReg, 0, 1);
-        writeRegister(TMAG5273_REG_I2C_ADDRESS, addReg);
-    }
+    sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_I2C_ADDRESS, addReg);
+    if (rc != ksfTkErrOk)
+        return -1;
+
+    bitWrite(addReg, 0, addressEnable ? 1 : 0);
+
+    rc = _theI2CBus.writeRegister(TMAG5273_REG_I2C_ADDRESS, addReg);
+    if (rc != ksfTkErrOk)
+        return -1;
 
     return getError();
 }
@@ -1432,17 +1467,19 @@ int8_t TMAG5273::setI2CAddressEN(bool addressEnable)
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setOscillatorError(bool oscError)
 {
-    uint16_t deviceStatusReg = 0;
-    deviceStatusReg = readRegister(TMAG5273_REG_DEVICE_STATUS);
+    uint8_t deviceStatusReg = 0;
 
-    if (oscError == 1)
+    sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_DEVICE_STATUS, deviceStatusReg);
+    if (rc != ksfTkErrOk)
+        return -1;
+
+    if (oscError)
     {
         // Writes 1 to bit 4 of the register
         bitWrite(deviceStatusReg, 4, 1);
-    }
-    else
-    {
-        return getError();
+        rc = _theI2CBus.writeRegister(TMAG5273_REG_DEVICE_STATUS, deviceStatusReg);
+        if (rc != ksfTkErrOk)
+            return -1;
     }
 
     return getError();
@@ -1456,15 +1493,15 @@ int8_t TMAG5273::setOscillatorError(bool oscError)
 ///     0X0 = CRC disabled
 ///     0X1 = CRC enabled
 ///     TMAG5273_REG_DEVICE_CONFIG_1 - bit 7
-/// @return CRC disabled (0) or CRC enables (1)
+/// @return CRC disabled (0) or CRC enables (1), -1 for error
 uint8_t TMAG5273::getCRCMode()
 {
     uint8_t getCRC = 0;
-    getCRC = readRegister(TMAG5273_REG_DEVICE_CONFIG_1);
 
-    uint8_t mode = bitRead(getCRC, 7);
+    if (_theI2CBus.readRegister(TMAG5273_REG_DEVICE_CONFIG_1, getCRC) != ksfTkErrOk)
+        return -1;
 
-    return mode;
+    return bitRead(getCRC, 7);
 }
 
 /// @brief Returns the temp coefficient of the magnet
@@ -1477,7 +1514,9 @@ uint8_t TMAG5273::getCRCMode()
 uint8_t TMAG5273::getMagTemp()
 {
     uint8_t magTemp = 0;
-    magTemp = readRegister(TMAG5273_REG_DEVICE_CONFIG_1);
+
+    if (_theI2CBus.readRegister(TMAG5273_REG_DEVICE_CONFIG_1, magTemp) != ksfTkErrOk)
+        return 1;
 
     // Fills with bit 5
     uint8_t tempReg5 = bitRead(magTemp, 5);
@@ -1519,7 +1558,9 @@ uint8_t TMAG5273::getMagTemp()
 uint8_t TMAG5273::getConvAvg()
 {
     uint8_t convAv = 0;
-    convAv = readRegister(TMAG5273_REG_DEVICE_CONFIG_1);
+
+    if (_theI2CBus.readRegister(TMAG5273_REG_DEVICE_CONFIG_1, convAv) != ksfTkErrOk)
+        return 1;
 
     uint8_t convBit2 = bitRead(convAv, 2);
     uint8_t convBit3 = bitRead(convAv, 3);
@@ -1565,8 +1606,10 @@ uint8_t TMAG5273::getConvAvg()
 /// @return I2C read mode (0-2)
 uint8_t TMAG5273::getReadMode()
 {
+    uint8_t readModeReg = 0;
     // Read the device config 1 register
-    uint8_t readModeReg = readRegister(TMAG5273_REG_DEVICE_CONFIG_1);
+    if (_theI2CBus.readRegister(TMAG5273_REG_DEVICE_CONFIG_1, readModeReg) != ksfTkErrOk)
+        return 0;
 
     // Read the bits to determine the value to return
     uint8_t readMode0 = bitRead(readModeReg, 0);
@@ -1601,7 +1644,9 @@ uint8_t TMAG5273::getReadMode()
 uint8_t TMAG5273::getIntThreshold()
 {
     uint8_t interruptThreshold = 0;
-    interruptThreshold = readRegister(TMAG5273_REG_DEVICE_CONFIG_2);
+
+    if (_theI2CBus.readRegister(TMAG5273_REG_DEVICE_CONFIG_2, interruptThreshold) != ksfTkErrOk)
+        return 0;
 
     uint8_t interruptThreshold5 = bitRead(interruptThreshold, 5);
     uint8_t interruptThreshold6 = bitRead(interruptThreshold, 6);
@@ -1632,11 +1677,11 @@ uint8_t TMAG5273::getIntThreshold()
 uint8_t TMAG5273::getLowPower()
 {
     uint8_t lowPowerMode = 0;
-    lowPowerMode = readRegister(TMAG5273_REG_DEVICE_CONFIG_2);
 
-    uint8_t lowPowerModeBit = bitRead(lowPowerMode, 4);
+    if (_theI2CBus.readRegister(TMAG5273_REG_DEVICE_CONFIG_2, lowPowerMode) != ksfTkErrOk)
+        return 0;
 
-    return lowPowerModeBit;
+    return bitRead(lowPowerMode, 4);
 }
 
 /// @brief Returns if the I2C glitch filter is on or off
@@ -1647,11 +1692,11 @@ uint8_t TMAG5273::getLowPower()
 uint8_t TMAG5273::getGlitchFiler()
 {
     uint8_t glitchMode = 0;
-    glitchMode = readRegister(TMAG5273_REG_DEVICE_CONFIG_2);
 
-    uint8_t glitchModeBit = bitRead(glitchMode, 3);
+    if (_theI2CBus.readRegister(TMAG5273_REG_DEVICE_CONFIG_2, glitchMode) != ksfTkErrOk)
+        return 0;
 
-    return glitchModeBit;
+    return bitRead(glitchMode, 3);
 }
 
 /// @brief Returns the condition which initiates a single conversion
@@ -1666,11 +1711,11 @@ uint8_t TMAG5273::getGlitchFiler()
 uint8_t TMAG5273::getTriggerMode()
 {
     uint8_t triggerMode = 0;
-    triggerMode = readRegister(TMAG5273_REG_DEVICE_CONFIG_2);
 
-    uint8_t triggerModeBit = bitRead(triggerMode, 2);
+    if (_theI2CBus.readRegister(TMAG5273_REG_DEVICE_CONFIG_2, triggerMode) != ksfTkErrOk)
+        return 0;
 
-    return triggerModeBit;
+    return bitRead(triggerMode, 2);
 }
 
 /// @brief Returns the operating mode from one of the 4 listed below:
@@ -1683,7 +1728,9 @@ uint8_t TMAG5273::getTriggerMode()
 uint8_t TMAG5273::getOperatingMode()
 {
     uint8_t opMode = 0;
-    opMode = readRegister(TMAG5273_REG_DEVICE_CONFIG_2);
+
+    if (_theI2CBus.readRegister(TMAG5273_REG_DEVICE_CONFIG_2, opMode) != ksfTkErrOk)
+        return 0;
 
     uint8_t opMode0 = bitRead(opMode, 0);
     uint8_t opMode1 = bitRead(opMode, 1);
@@ -1730,7 +1777,9 @@ uint8_t TMAG5273::getOperatingMode()
 uint8_t TMAG5273::getMagneticChannel()
 {
     uint8_t magChannel = 0;
-    magChannel = readRegister(TMAG5273_REG_SENSOR_CONFIG_1);
+
+    if (_theI2CBus.readRegister(TMAG5273_REG_SENSOR_CONFIG_1, magChannel) != ksfTkErrOk)
+        return 0;
 
     uint8_t magMode4 = bitRead(magChannel, 4);
     uint8_t magMode5 = bitRead(magChannel, 5);
@@ -1811,7 +1860,9 @@ uint8_t TMAG5273::getMagneticChannel()
 uint8_t TMAG5273::getSleeptime()
 {
     uint8_t sleepReg = 0;
-    sleepReg = readRegister(TMAG5273_REG_SENSOR_CONFIG_1);
+
+    if (_theI2CBus.readRegister(TMAG5273_REG_SENSOR_CONFIG_1, sleepReg) != ksfTkErrOk)
+        return 0;
 
     uint8_t sleep0 = bitRead(sleepReg, 0);
     uint8_t sleep1 = bitRead(sleepReg, 1);
@@ -1885,11 +1936,10 @@ uint8_t TMAG5273::getSleeptime()
 uint8_t TMAG5273::getMagDir()
 {
     uint8_t magDirectionReg = 0;
-    magDirectionReg = readRegister(TMAG5273_REG_SENSOR_CONFIG_2);
+    if (_theI2CBus.readRegister(TMAG5273_REG_SENSOR_CONFIG_2, magDirectionReg) != ksfTkErrOk)
+        return 0;
 
-    uint8_t magDirection5 = bitRead(magDirectionReg, 5);
-
-    return magDirection5;
+    return bitRead(magDirectionReg, 5);
 }
 
 /// @brief Returns the axis for magnitude gain correction value
@@ -1901,11 +1951,10 @@ uint8_t TMAG5273::getMagDir()
 uint8_t TMAG5273::getMagnitudeChannelSelect()
 {
     uint8_t magGainReg = 0;
-    magGainReg = readRegister(TMAG5273_REG_SENSOR_CONFIG_2);
+    if (_theI2CBus.readRegister(TMAG5273_REG_SENSOR_CONFIG_2, magGainReg) != ksfTkErrOk)
+        return 0;
 
-    uint8_t magGain4 = bitRead(magGainReg, 4);
-
-    return magGain4;
+    return bitRead(magGainReg, 4);
 }
 
 /// @brief This function returns an 8-bit gain value determined by a
@@ -1919,12 +1968,11 @@ uint8_t TMAG5273::getMagnitudeChannelSelect()
 uint8_t TMAG5273::getMagneticGain()
 {
     uint8_t magneticGainReg = 0;
-    magneticGainReg = readRegister(TMAG5273_REG_MAG_GAIN_CONFIG);
+    if (_theI2CBus.readRegister(TMAG5273_REG_MAG_GAIN_CONFIG, magneticGainReg) != ksfTkErrOk)
+        return 0;
 
     // Multiply by resolution
-    float magneticGain = magneticGainReg * 256;
-
-    return magneticGain;
+    return magneticGainReg * 256;
 }
 
 /// @brief This function will return an 8-bit, 2's complement offset value
@@ -1935,9 +1983,13 @@ uint8_t TMAG5273::getMagneticGain()
 /// @return Magnetic offset value for the first axis
 int8_t TMAG5273::getMagneticOffset1()
 {
-    int8_t magOffset1 = 0;
-    magOffset1 = readRegister(TMAG5273_REG_MAG_OFFSET_CONFIG_1);
-
+    uint8_t tmpRead;
+    if (_theI2CBus.readRegister(TMAG5273_REG_MAG_OFFSET_CONFIG_1, tmpRead) != ksfTkErrOk)
+        return 0;
+    int8_t magOffset1 = *(int8_t *)&tmpRead;
+    // KDB 12/25
+    // rangeVal is always 0, so range is always 40? Not sure the logic here, but
+    // leaving it for now -- can re-visit later if needed
     uint8_t rangeVal = 0;
     uint8_t range = 0;
     if (rangeVal == 0)
@@ -1950,9 +2002,7 @@ int8_t TMAG5273::getMagneticOffset1()
     }
 
     // Divide by resoltuion (2^12 = 2048)
-    float offsetVal = (magOffset1 * range) / 2048;
-
-    return offsetVal;
+    return (int8_t)((magOffset1 * range) / 2048);
 }
 
 /// @brief This function will return an 8-bit, 2's complement offset value
@@ -1963,9 +2013,13 @@ int8_t TMAG5273::getMagneticOffset1()
 /// @return Magnetic offset value for the second axis
 int8_t TMAG5273::getMagneticOffset2()
 {
-    int8_t magOffset2 = 0;
-    magOffset2 = readRegister(TMAG5273_REG_MAG_OFFSET_CONFIG_2);
+    // deal with int/uint conversion
+    uint8_t tempRead = 0;
 
+    if (_theI2CBus.readRegister(TMAG5273_REG_MAG_OFFSET_CONFIG_2, tempRead) != ksfTkErrOk)
+        return 0;
+
+    int magOffset2 = *(int8_t *)&tempRead;
     // Choose the XY axis range
     uint8_t channelSelect = getAngleEn(); // 1, 2, or 3
     uint8_t rangeValXY = getXYAxisRange();
@@ -2014,9 +2068,7 @@ int8_t TMAG5273::getMagneticOffset2()
     }
 
     // Use resolution equation in datasheet
-    float offsetVal = (magOffset2 * range) / 2048; // 2^11 = 2048
-
-    return offsetVal;
+    return (int8_t)((magOffset2 * range) / 2048); // 2^11 = 2048
 }
 
 /// @brief Returns angle calculation, magnetic gain, and offset
@@ -2031,7 +2083,8 @@ int8_t TMAG5273::getMagneticOffset2()
 uint8_t TMAG5273::getAngleEn()
 {
     uint8_t angleReg = 0;
-    angleReg = readRegister(TMAG5273_REG_SENSOR_CONFIG_2);
+    if (_theI2CBus.readRegister(TMAG5273_REG_SENSOR_CONFIG_2, angleReg) != ksfTkErrOk)
+        return 0;
 
     uint8_t angleDir2 = bitRead(angleReg, 2);
     uint8_t angleDir3 = bitRead(angleReg, 3);
@@ -2069,20 +2122,12 @@ uint8_t TMAG5273::getAngleEn()
 uint8_t TMAG5273::getXYAxisRange()
 {
     uint8_t XYrangeReg = 0;
-    XYrangeReg = readRegister(TMAG5273_REG_SENSOR_CONFIG_2);
+    if (_theI2CBus.readRegister(TMAG5273_REG_SENSOR_CONFIG_2, XYrangeReg) != ksfTkErrOk)
+        return 0;
 
     uint8_t axisRange = bitRead(XYrangeReg, 1);
 
-    if (axisRange == 0)
-    {
-        return 0;
-    }
-    else if (axisRange == 1)
-    {
-        return 1;
-    }
-
-    return 0;
+    return (axisRange == 1 ? 1 : 0);
 }
 
 /// @brief Returns the Z axis magnetic range from the
@@ -2094,20 +2139,12 @@ uint8_t TMAG5273::getXYAxisRange()
 uint8_t TMAG5273::getZAxisRange()
 {
     uint8_t ZrangeReg = 0;
-    ZrangeReg = readRegister(TMAG5273_REG_SENSOR_CONFIG_2);
+    if (_theI2CBus.readRegister(TMAG5273_REG_SENSOR_CONFIG_2, ZrangeReg) != ksfTkErrOk)
+        return 0;
 
     uint8_t ZaxisRange = bitRead(ZrangeReg, 0);
 
-    if (ZaxisRange == 0)
-    {
-        return 0;
-    }
-    else if (ZaxisRange == 1)
-    {
-        return 1;
-    }
-
-    return 0;
+    return (ZaxisRange == 1 ? 1 : 0);
 }
 
 /// @brief Returns an 8-bit, 2's complement X axis threshold code for
@@ -2118,13 +2155,16 @@ uint8_t TMAG5273::getZAxisRange()
 /// @return Returns the X threshold code for limit check
 float TMAG5273::getXThreshold()
 {
-    int8_t xThresh = 0;
-    xThresh = readRegister(TMAG5273_REG_X_THR_CONFIG);
+
+    uint8_t tempRead;
+    if (_theI2CBus.readRegister(TMAG5273_REG_X_THR_CONFIG, tempRead) != ksfTkErrOk)
+        return 0;
+
+    int8_t xThresh = *(int8_t *)&tempRead;
+
     uint8_t range = getXYAxisRange();
 
-    float thresh = (float)(40 * (1 + range)) / 128 * xThresh;
-
-    return thresh; // mT
+    return (float)(40. * (1 + range)) / 128. * xThresh;
 }
 
 /// @brief Returns an 8-bit, 2's complement Y axis threshold code for
@@ -2135,13 +2175,16 @@ float TMAG5273::getXThreshold()
 /// @return Returns the Y threshold code for limit check
 float TMAG5273::getYThreshold()
 {
-    int8_t yThresh = 0;
-    yThresh = readRegister(TMAG5273_REG_Y_THR_CONFIG);
+
+    uint8_t tempRead;
+    if (_theI2CBus.readRegister(TMAG5273_REG_Y_THR_CONFIG, tempRead) != ksfTkErrOk)
+        return 0;
+
+    int8_t yThresh = *(int8_t *)&tempRead;
+
     uint8_t range = getXYAxisRange();
 
-    float thresh = (float)(40 * (1 + range)) / 128 * yThresh;
-
-    return thresh; // mT
+    return (float)(40. * (1. + range)) / 128. * yThresh;
 }
 
 /// @brief Returns an 8-bit, 2's complement Z axis threshold code for
@@ -2152,13 +2195,14 @@ float TMAG5273::getYThreshold()
 /// @return Returns the Z threshold code for limit check
 float TMAG5273::getZThreshold()
 {
-    int8_t zThresh = 0;
-    zThresh = readRegister(TMAG5273_REG_Z_THR_CONFIG);
+    uint8_t tempRead;
+    if (_theI2CBus.readRegister(TMAG5273_REG_Z_THR_CONFIG, tempRead) != ksfTkErrOk)
+        return 0;
+
+    int8_t zThresh = *(int8_t *)&tempRead;
     uint8_t range = getZAxisRange();
 
-    float thresh = (float)(40 * (1 + range)) / 128 * zThresh;
-
-    return thresh; // mT
+    return (float)(40. * (1. + range)) / 128. * zThresh;
 }
 
 /// @brief Returns the temperature threshold code entered by the user.
@@ -2169,15 +2213,14 @@ float TMAG5273::getZThreshold()
 /// @return Temperature threshold code entered by the user originally.
 float TMAG5273::getTemperatureThreshold()
 {
-    int8_t tempThreshReg = 0;
-    tempThreshReg = readRegister(TMAG5273_REG_T_CONFIG);
 
-    // Value to hold
-    int8_t tempThresh = 0;
-    // Shifts the last bit off the value
-    tempThresh = (tempThreshReg >> 1);
+    uint8_t tempRead;
+    if (_theI2CBus.readRegister(TMAG5273_REG_T_CONFIG, tempRead) != ksfTkErrOk)
+        return 0;
 
-    return tempThresh; // degrees C
+    int8_t tempThreshReg = *(int8_t *)&tempRead;
+
+    return (float)(tempThreshReg >> 1); // degrees C
 }
 
 /// @brief Returns the enable bit that determines the data
@@ -2189,11 +2232,11 @@ float TMAG5273::getTemperatureThreshold()
 uint8_t TMAG5273::getTemperatureEN()
 {
     uint8_t tempENreg = 0;
-    tempENreg = readRegister(TMAG5273_REG_T_CONFIG);
 
-    uint8_t tempEN = bitRead(tempENreg, 0);
+    if (_theI2CBus.readRegister(TMAG5273_REG_T_CONFIG, tempENreg) != ksfTkErrOk)
+        return 0;
 
-    return tempEN;
+    return bitRead(tempENreg, 0);
 }
 
 /// @brief Returns the enable interrupt response bit on conversion
@@ -2207,11 +2250,11 @@ uint8_t TMAG5273::getTemperatureEN()
 uint8_t TMAG5273::getInterruptResult()
 {
     uint8_t intRsltReg = 0;
-    intRsltReg = readRegister(TMAG5273_REG_INT_CONFIG_1);
 
-    uint8_t intRslt = bitRead(intRsltReg, 7);
+    if (_theI2CBus.readRegister(TMAG5273_REG_INT_CONFIG_1, intRsltReg) != ksfTkErrOk)
+        return 0;
 
-    return intRslt;
+    return bitRead(intRsltReg, 7);
 }
 
 /// @brief Returns the bit that enables the interrupt response
@@ -2223,11 +2266,11 @@ uint8_t TMAG5273::getInterruptResult()
 uint8_t TMAG5273::getThresholdEn()
 {
     uint8_t threshReg = 0;
-    threshReg = readRegister(TMAG5273_REG_INT_CONFIG_1);
 
-    uint8_t threshEnRslt = bitRead(threshReg, 6);
+    if (_theI2CBus.readRegister(TMAG5273_REG_INT_CONFIG_1, threshReg) != ksfTkErrOk)
+        return 0;
 
-    return threshEnRslt;
+    return bitRead(threshReg, 6);
 }
 
 /// @brief Returns the !INT interrupt if it is latched or pusled.
@@ -2239,11 +2282,11 @@ uint8_t TMAG5273::getThresholdEn()
 uint8_t TMAG5273::getIntPinState()
 {
     uint8_t intStateReg = 0;
-    intStateReg = readRegister(TMAG5273_REG_INT_CONFIG_1);
 
-    uint8_t intStateRslt = bitRead(intStateReg, 5);
+    if (_theI2CBus.readRegister(TMAG5273_REG_INT_CONFIG_1, intStateReg) != ksfTkErrOk)
+        return 0;
 
-    return intStateRslt;
+    return bitRead(intStateReg, 5);
 }
 
 /// @brief Returns the configuration for the interrupt mode select
@@ -2257,7 +2300,8 @@ uint8_t TMAG5273::getIntPinState()
 uint8_t TMAG5273::getInterruptMode()
 {
     uint8_t intModeReg = 0;
-    intModeReg = readRegister(TMAG5273_REG_INT_CONFIG_1);
+    if (_theI2CBus.readRegister(TMAG5273_REG_INT_CONFIG_1, intModeReg) != ksfTkErrOk)
+        return 0;
 
     uint8_t intCon2 = bitRead(intModeReg, 2);
     uint8_t intCon3 = bitRead(intModeReg, 3);
@@ -2303,11 +2347,10 @@ uint8_t TMAG5273::getInterruptMode()
 uint8_t TMAG5273::getMaskInt()
 {
     uint8_t maskIntReg = 0;
-    maskIntReg = readRegister(TMAG5273_REG_INT_CONFIG_1);
+    if (_theI2CBus.readRegister(TMAG5273_REG_INT_CONFIG_1, maskIntReg) != ksfTkErrOk)
+        return 0;
 
-    uint8_t maskInt = bitRead(maskIntReg, 0);
-
-    return maskInt;
+    return bitRead(maskIntReg, 0);
 }
 
 /// @brief Returns the rolling count of conversion data sets
@@ -2316,14 +2359,10 @@ uint8_t TMAG5273::getMaskInt()
 uint8_t TMAG5273::getSetCount()
 {
     uint8_t convReg = 0;
-    convReg = readRegister(TMAG5273_REG_CONV_STATUS);
+    if (_theI2CBus.readRegister(TMAG5273_REG_CONV_STATUS, convReg) != ksfTkErrOk)
+        return 0;
 
-    // variable for count value to be held in
-    uint8_t count = 0;
-    // Shift off the last 5 bits of the register
-    count = convReg >> 5;
-
-    return count;
+    return convReg >> 5;
 }
 
 /// @brief Returns if the device is powered up, or experienced power-
@@ -2335,11 +2374,10 @@ uint8_t TMAG5273::getSetCount()
 uint8_t TMAG5273::getPOR()
 {
     uint8_t convReg = 0;
-    convReg = readRegister(TMAG5273_REG_CONV_STATUS);
+    if (_theI2CBus.readRegister(TMAG5273_REG_CONV_STATUS, convReg) != ksfTkErrOk)
+        return 0;
 
-    uint8_t PORBit = bitRead(convReg, 4);
-
-    return PORBit;
+    return bitRead(convReg, 4);
 }
 
 /// @brief Returns if there was a detection of any internal
@@ -2353,11 +2391,10 @@ uint8_t TMAG5273::getPOR()
 uint8_t TMAG5273::getDiagStatus()
 {
     uint8_t convReg = 0;
-    convReg = readRegister(TMAG5273_REG_CONV_STATUS);
+    if (_theI2CBus.readRegister(TMAG5273_REG_CONV_STATUS, convReg) != ksfTkErrOk)
+        return 0;
 
-    uint8_t diagBit = bitRead(convReg, 1);
-
-    return diagBit;
+    return bitRead(convReg, 1);
 }
 
 /// @brief Returns if the conversion data buffer is ready
@@ -2369,11 +2406,10 @@ uint8_t TMAG5273::getDiagStatus()
 uint8_t TMAG5273::getResultStatus()
 {
     uint8_t convReg = 0;
-    convReg = readRegister(TMAG5273_REG_CONV_STATUS);
+    if (_theI2CBus.readRegister(TMAG5273_REG_CONV_STATUS, convReg) != ksfTkErrOk)
+        return 0;
 
-    uint8_t resultBit = bitRead(convReg, 0);
-
-    return resultBit;
+    return bitRead(convReg, 0);
 }
 
 /// @brief Returns the I2C address of the device. There is a 7-bit
@@ -2386,11 +2422,10 @@ uint8_t TMAG5273::getResultStatus()
 uint8_t TMAG5273::getI2CAddress()
 {
     uint8_t addressReg = 0;
-    uint8_t address = readRegister(TMAG5273_REG_I2C_ADDRESS);
+    if (_theI2CBus.readRegister(TMAG5273_REG_I2C_ADDRESS, addressReg) != ksfTkErrOk)
+        return 0;
 
-    addressReg = address >> 1; // Shift off the last bit to return the first 7
-
-    return addressReg; // returns the address of the I2C device currently set
+    return addressReg >> 1; // Shift off the last bit to return the first 7
 }
 
 /// @brief Returns the device version indicator. The reset value of the
@@ -2404,7 +2439,8 @@ uint8_t TMAG5273::getI2CAddress()
 uint8_t TMAG5273::getDeviceID()
 {
     uint8_t deviceReg = 0;
-    deviceReg = readRegister(TMAG5273_REG_DEVICE_ID);
+    if (_theI2CBus.readRegister(TMAG5273_REG_DEVICE_ID, deviceReg) != ksfTkErrOk)
+        return 0;
 
     uint8_t reg1 = bitRead(deviceReg, 0);
     uint8_t reg2 = bitRead(deviceReg, 1);
@@ -2433,8 +2469,10 @@ uint16_t TMAG5273::getManufacturerID()
 {
     uint16_t deviceIDReg = 0;
     uint8_t databuffer[2];
+    size_t nRead;
 
-    readRegisters(TMAG5273_REG_MANUFACTURER_ID_LSB, databuffer, 2);
+    if (_theI2CBus.readRegister(TMAG5273_REG_MANUFACTURER_ID_LSB, databuffer, 2, nRead) != ksfTkErrOk)
+        return 0;
 
     deviceIDReg = (databuffer[1] << 8) | (databuffer[0]);
 
@@ -2450,11 +2488,12 @@ uint16_t TMAG5273::getManufacturerID()
 uint8_t TMAG5273::getInterruptPinStatus()
 {
     uint8_t deviceStatusReg = 0;
-    deviceStatusReg = readRegister(TMAG5273_REG_DEVICE_STATUS);
-    // Reads back the bit we want to investigate
-    uint8_t intPinStatus = bitRead(deviceStatusReg, 4);
 
-    return intPinStatus; // Returns a 0 or 1 if low or high, respectively
+    if (_theI2CBus.readRegister(TMAG5273_REG_DEVICE_STATUS, deviceStatusReg) != ksfTkErrOk)
+        return 0;
+
+    // Reads back the bit we want to investigate
+    return bitRead(deviceStatusReg, 4);
 }
 
 /// @brief This function returns the device status register as its
@@ -2466,8 +2505,10 @@ uint8_t TMAG5273::getInterruptPinStatus()
 /// @return Device Status Regsiter as a raw value.
 uint8_t TMAG5273::getDeviceStatus()
 {
+    uint8_t deviceStatusReg = 0;
     // Check for undervoltage, OTP CRC, Int Pin, and Oscillator errors
-    uint8_t deviceStatusReg = readRegister(TMAG5273_REG_DEVICE_STATUS);
+    if (_theI2CBus.readRegister(TMAG5273_REG_DEVICE_STATUS, deviceStatusReg) != ksfTkErrOk)
+        return 0;
 
     return deviceStatusReg;
 }
@@ -2511,14 +2552,15 @@ float TMAG5273::getTemp()
     // Variable to store full temperature value
     int16_t temp = 0;
     uint8_t databuffer[2];
+    size_t nRead;
     // Read in the MSB and LSB registers
-    readRegisters(TMAG5273_REG_T_MSB_RESULT, databuffer, 2);
+    if (_theI2CBus.readRegister(TMAG5273_REG_T_MSB_RESULT, databuffer, 2, nRead) != ksfTkErrOk)
+        return 0;
+
     // Combines the two in one register where the MSB is shifted to the correct location
     temp = (databuffer[0] << 8) | (databuffer[1]);
     // Formula for correct output value
-    float tempOut = TMAG5273_TSENSE_T0 + (((float)temp - TMAG5273_TADC_T0) / (TMAG5273_TADC_RES));
-
-    return tempOut;
+    return TMAG5273_TSENSE_T0 + (((float)temp - TMAG5273_TADC_T0) / (TMAG5273_TADC_RES));
 }
 
 /// @brief Readcs back the X-Channel data conversion results, the
@@ -2527,13 +2569,18 @@ float TMAG5273::getTemp()
 /// @return X-Channel data conversion results
 float TMAG5273::getXData()
 {
-    int8_t xLSB = readRegister(TMAG5273_REG_X_LSB_RESULT);
-    int8_t xMSB = readRegister(TMAG5273_REG_X_MSB_RESULT);
+    uint8_t tempRead;
+    if (_theI2CBus.readRegister(TMAG5273_REG_X_LSB_RESULT, tempRead) != ksfTkErrOk)
+        return 0;
 
-    // Variable to store full X data
-    int16_t xData = 0;
+    int8_t xLSB = *(int8_t *)&tempRead;
+
+    if (_theI2CBus.readRegister(TMAG5273_REG_X_MSB_RESULT, tempRead) != ksfTkErrOk)
+        return 0;
+    int8_t xMSB = *(int8_t *)&tempRead;
+
     // Combines the two in one register where the MSB is shifted to the correct location
-    xData = xLSB + (xMSB << 8);
+    int16_t xData = xLSB + (xMSB << 8);
 
     // Reads to see if the range is set to 40mT or 80mT
     uint8_t rangeValXY = getXYAxisRange();
@@ -2560,16 +2607,17 @@ float TMAG5273::getXData()
 /// @return Y-Channel data conversion results
 float TMAG5273::getYData()
 {
-    int8_t yLSB = 0;
-    int8_t yMSB = 0;
+    uint8_t tempRead;
 
-    yLSB = readRegister(TMAG5273_REG_Y_LSB_RESULT);
-    yMSB = readRegister(TMAG5273_REG_Y_MSB_RESULT);
+    if (_theI2CBus.readRegister(TMAG5273_REG_Y_LSB_RESULT, tempRead) != ksfTkErrOk)
+        return 0;
+    int8_t yLSB = *(int8_t *)&tempRead;
+    if (_theI2CBus.readRegister(TMAG5273_REG_Y_MSB_RESULT, tempRead) != ksfTkErrOk)
+        return 0;
+    int8_t yMSB = *(int8_t *)&tempRead;
 
-    // Variable to store full Y data
-    int16_t yData = 0;
     // Combines the two in one register where the MSB is shifted to the correct location
-    yData = yLSB + (yMSB << 8);
+    int16_t yData = yLSB + (yMSB << 8);
 
     // Reads to see if the range is set to 40mT or 80mT
     uint8_t rangeValXY = getXYAxisRange();
@@ -2584,8 +2632,8 @@ float TMAG5273::getYData()
     }
 
     // 16-bit data format equation
-    float div = 32768;
-    float yOut = (range * yData) / div;
+
+    float yOut = (range * yData) / 32768.;
 
     return yOut;
 }
@@ -2596,16 +2644,17 @@ float TMAG5273::getYData()
 /// @return Z-Channel data conversion results.
 float TMAG5273::getZData()
 {
-    int8_t zLSB = 0;
-    int8_t zMSB = 0;
+    uint8_t tempRead;
 
-    zLSB = readRegister(TMAG5273_REG_Z_LSB_RESULT);
-    zMSB = readRegister(TMAG5273_REG_Z_MSB_RESULT);
+    if (_theI2CBus.readRegister(TMAG5273_REG_Z_LSB_RESULT, tempRead) != ksfTkErrOk)
+        return 0;
+    int8_t zLSB = *(int8_t *)&tempRead;
+    if (_theI2CBus.readRegister(TMAG5273_REG_Z_MSB_RESULT, tempRead) != ksfTkErrOk)
+        return 0;
+    int8_t zMSB = *(int8_t *)&tempRead;
 
-    // Variable to store full X data
-    int16_t zData = 0;
     // Combines the two in one register where the MSB is shifted to the correct location
-    zData = zLSB + (zMSB << 8); 
+    int16_t zData = zLSB + (zMSB << 8);
 
     // Reads to see if the range is set to 40mT or 80mT
     uint8_t rangeValZ = getZAxisRange();
@@ -2621,8 +2670,8 @@ float TMAG5273::getZData()
 
     // div = (2^16) / 2    (as per the datasheet equation 10)
     // 16-bit data format equation
-    float div = 32768;
-    float zOut = (range * zData) / div;
+
+    float zOut = (range * zData) / 32768.;
 
     return zOut;
 }
@@ -2638,32 +2687,23 @@ float TMAG5273::getAngleResult()
 {
     uint8_t angleLSB = 0;
     uint8_t angleMSB = 0;
-
-    angleLSB = readRegister(TMAG5273_REG_ANGLE_RESULT_LSB) & 0b11111111;
-    angleMSB = readRegister(TMAG5273_REG_ANGLE_RESULT_MSB);
-
-    // Variable to hold the full angle MSB and LSB registers
-    int16_t angleReg = 0;
-    // Variable to hold the last 4 bits as the fraction of an angle
-    float decValue = 0;
-    // Variable to hold the angle value without the fraction value
-    int16_t angleVal = 0;
-    // Variable to hold the full final value to return
-    float finalVal = 0;
+    if (_theI2CBus.readRegister(TMAG5273_REG_ANGLE_RESULT_LSB, angleLSB) != ksfTkErrOk)
+        return 0;
+    angleLSB = angleLSB & 0b11111111;
+    if (_theI2CBus.readRegister(TMAG5273_REG_ANGLE_RESULT_MSB, angleMSB) != ksfTkErrOk)
+        return 0;
 
     // Combining the register value
-    angleReg = angleLSB + (angleMSB << 8); 
+    int16_t angleReg = angleLSB + (angleMSB << 8);
 
     // Removing the uneeded bits for the fraction value
-    decValue = float(angleLSB & 0b1111) / 16;
+    float decValue = float(angleLSB & 0b1111) / 16;
 
     // Shift off the decimal value (last 4 bits)
-    angleVal = angleReg >> 4;
+    int16_t angleVal = angleReg >> 4;
 
     // Add the two values together now
-    finalVal = angleVal + decValue;
-
-    return finalVal;
+    return angleVal + decValue;
 }
 
 /// @brief Returns the resultant vector magnitude (during angle
@@ -2673,10 +2713,11 @@ float TMAG5273::getAngleResult()
 float TMAG5273::getMagnitudeResult()
 {
     // Creates a variable for the magnitude register
-    uint16_t magReg = 0;
+    uint8_t magReg = 0;
 
     // Reads in the magnitude result register
-    magReg = readRegister(TMAG5273_REG_MAGNITUDE_RESULT);
+    if (_theI2CBus.readRegister(TMAG5273_REG_MAGNITUDE_RESULT, magReg) != ksfTkErrOk)
+        return 0;
 
     return magReg;
 }
