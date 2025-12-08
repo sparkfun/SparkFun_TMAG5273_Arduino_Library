@@ -2569,18 +2569,18 @@ float TMAG5273::getTemp()
 /// @return X-Channel data conversion results
 float TMAG5273::getXData()
 {
-    uint8_t tempRead;
-    if (_theI2CBus.readRegister(TMAG5273_REG_X_LSB_RESULT, tempRead) != ksfTkErrOk)
+    uint8_t xLSB = 0;
+    uint8_t xMSB = 0;
+    if (_theI2CBus.readRegister(TMAG5273_REG_X_LSB_RESULT, xLSB) != ksfTkErrOk)
         return 0;
 
-    int8_t xLSB = *(int8_t *)&tempRead;
-
-    if (_theI2CBus.readRegister(TMAG5273_REG_X_MSB_RESULT, tempRead) != ksfTkErrOk)
+    if (_theI2CBus.readRegister(TMAG5273_REG_X_MSB_RESULT, xMSB) != ksfTkErrOk)
         return 0;
-    int8_t xMSB = *(int8_t *)&tempRead;
 
     // Combines the two in one register where the MSB is shifted to the correct location
-    int32_t xData = xLSB + (xMSB << 8);
+    // convert the uint16_t to int16_t
+    uint16_t tmpData = (xMSB << 8) + xLSB;
+    int16_t xData = *(int16_t *)&tmpData;
 
     // Reads to see if the range is set to 40mT or 80mT
     uint8_t rangeValXY = getXYAxisRange();
@@ -2606,17 +2606,19 @@ float TMAG5273::getXData()
 /// @return Y-Channel data conversion results
 float TMAG5273::getYData()
 {
-    uint8_t tempRead;
 
-    if (_theI2CBus.readRegister(TMAG5273_REG_Y_LSB_RESULT, tempRead) != ksfTkErrOk)
+    uint8_t yLSB = 0;
+    uint8_t yMSB = 0;
+    if (_theI2CBus.readRegister(TMAG5273_REG_Y_LSB_RESULT, yLSB) != ksfTkErrOk)
         return 0;
-    int8_t yLSB = *(int8_t *)&tempRead;
-    if (_theI2CBus.readRegister(TMAG5273_REG_Y_MSB_RESULT, tempRead) != ksfTkErrOk)
+
+    if (_theI2CBus.readRegister(TMAG5273_REG_Y_MSB_RESULT, yMSB) != ksfTkErrOk)
         return 0;
-    int8_t yMSB = *(int8_t *)&tempRead;
 
     // Combines the two in one register where the MSB is shifted to the correct location
-    int32_t yData = yLSB + (yMSB << 8);
+    // convert the uint16_t to int16_t
+    uint16_t tmpData = (yMSB << 8) + yLSB;
+    int16_t yData = *(int16_t *)&tmpData;
 
     // Reads to see if the range is set to 40mT or 80mT
     uint8_t rangeValXY = getXYAxisRange();
@@ -2643,17 +2645,19 @@ float TMAG5273::getYData()
 /// @return Z-Channel data conversion results.
 float TMAG5273::getZData()
 {
-    uint8_t tempRead;
+    uint8_t zLSB = 0;
+    uint8_t zMSB = 0;
 
-    if (_theI2CBus.readRegister(TMAG5273_REG_Z_LSB_RESULT, tempRead) != ksfTkErrOk)
+    if (_theI2CBus.readRegister(TMAG5273_REG_Z_LSB_RESULT, zLSB) != ksfTkErrOk)
         return 0;
-    int8_t zLSB = *(int8_t *)&tempRead;
-    if (_theI2CBus.readRegister(TMAG5273_REG_Z_MSB_RESULT, tempRead) != ksfTkErrOk)
+
+    if (_theI2CBus.readRegister(TMAG5273_REG_Z_MSB_RESULT, zMSB) != ksfTkErrOk)
         return 0;
-    int8_t zMSB = *(int8_t *)&tempRead;
 
     // Combines the two in one register where the MSB is shifted to the correct location
-    int32_t zData = zLSB + (zMSB << 8);
+    // convert the uint16_t to int16_t
+    uint16_t tmpData = (zMSB << 8) + zLSB;
+    int16_t zData = *(int16_t *)&tmpData;
 
     // Reads to see if the range is set to 40mT or 80mT
     uint8_t rangeValZ = getZAxisRange();
