@@ -20,6 +20,8 @@ Distributed as-is; no warranty is given.
 #include <Arduino.h>
 #include <Wire.h>
 
+static const float kDataConversionDivisor = 32768; // 1 << 15
+
 TMAG5273::TMAG5273()
 {
     /* Nothing to do */
@@ -148,13 +150,11 @@ int8_t TMAG5273::readWakeUpAndSleepData(float *xVal, float *yVal, float *zVal, f
         range = 80;
     }
 
-    float div = 32768;
-
     // Return the values in the form that the equation will give
     *temperature = TMAG5273_TSENSE_T0 + (256 * (*temperature - (TMAG5273_TADC_T0 / 256)) / TMAG5273_TADC_RES);
-    *xVal = -(range * (*xVal)) / div;
-    *yVal = -(range * (*yVal)) / div;
-    *zVal = -(range * (*zVal)) / div;
+    *xVal = -(range * (*xVal)) / kDataConversionDivisor;
+    *yVal = -(range * (*yVal)) / kDataConversionDivisor;
+    *zVal = -(range * (*zVal)) / kDataConversionDivisor;
 
     return getError();
 }
@@ -2580,11 +2580,11 @@ float TMAG5273::getXData()
     int8_t xMSB = *(int8_t *)&tempRead;
 
     // Combines the two in one register where the MSB is shifted to the correct location
-    int16_t xData = xLSB + (xMSB << 8);
+    int32_t xData = xLSB + (xMSB << 8);
 
     // Reads to see if the range is set to 40mT or 80mT
     uint8_t rangeValXY = getXYAxisRange();
-    uint8_t range = 0;
+    uint32_t range = 0;
     if (rangeValXY == 0)
     {
         range = 40;
@@ -2595,8 +2595,7 @@ float TMAG5273::getXData()
     }
 
     // 16-bit data format equation
-    float div = 32768;
-    float xOut = -(range * xData) / div;
+    float xOut = -(range * xData) / kDataConversionDivisor;
 
     return xOut;
 }
@@ -2617,11 +2616,11 @@ float TMAG5273::getYData()
     int8_t yMSB = *(int8_t *)&tempRead;
 
     // Combines the two in one register where the MSB is shifted to the correct location
-    int16_t yData = yLSB + (yMSB << 8);
+    int32_t yData = yLSB + (yMSB << 8);
 
     // Reads to see if the range is set to 40mT or 80mT
     uint8_t rangeValXY = getXYAxisRange();
-    uint8_t range = 0;
+    uint32_t range = 0;
     if (rangeValXY == 0)
     {
         range = 40;
@@ -2633,7 +2632,7 @@ float TMAG5273::getYData()
 
     // 16-bit data format equation
 
-    float yOut = (range * yData) / 32768.;
+    float yOut = (range * yData) / kDataConversionDivisor;
 
     return yOut;
 }
@@ -2654,11 +2653,11 @@ float TMAG5273::getZData()
     int8_t zMSB = *(int8_t *)&tempRead;
 
     // Combines the two in one register where the MSB is shifted to the correct location
-    int16_t zData = zLSB + (zMSB << 8);
+    int32_t zData = zLSB + (zMSB << 8);
 
     // Reads to see if the range is set to 40mT or 80mT
     uint8_t rangeValZ = getZAxisRange();
-    uint8_t range = 0;
+    uint32_t range = 0;
     if (rangeValZ == 0)
     {
         range = 40;
@@ -2671,7 +2670,7 @@ float TMAG5273::getZData()
     // div = (2^16) / 2    (as per the datasheet equation 10)
     // 16-bit data format equation
 
-    float zOut = (range * zData) / 32768.;
+    float zOut = (range * zData) / kDataConversionDivisor;
 
     return zOut;
 }
