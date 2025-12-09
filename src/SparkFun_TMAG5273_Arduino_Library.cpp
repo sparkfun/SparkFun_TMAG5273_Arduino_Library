@@ -20,8 +20,6 @@ Distributed as-is; no warranty is given.
 #include <Arduino.h>
 #include <Wire.h>
 
-static const float kDataConversionDivisor = 32768; // 1 << 15
-
 TMAG5273::TMAG5273()
 {
     /* Nothing to do */
@@ -43,7 +41,7 @@ int8_t TMAG5273::begin(uint8_t sensorAddress, TwoWire &wirePort)
     if (isConnected() != 0)
         return 0;
 
-    // Following the Detailed Design Prodedure on page 42 of the datasheet
+    // Following the Detailed Design Procedure on page 42 of the datasheet
     setMagneticChannel(TMAG5273_X_Y_Z_ENABLE);
     setTemperatureEn(true);
     setOperatingMode(TMAG5273_CONTINUOUS_MEASURE_MODE);
@@ -133,37 +131,14 @@ int8_t TMAG5273::setupWakeUpAndSleep()
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::readWakeUpAndSleepData(float *xVal, float *yVal, float *zVal, float *temperature)
 {
-    uint8_t wakeupRegisterRead[8];
-    size_t nRead = 0;
 
-    // Read 4 bits of data
-    sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_T_MSB_RESULT, wakeupRegisterRead, 4, nRead);
-    if (rc != ksfTkErrOk)
+    if (xVal == nullptr || yVal == nullptr || zVal == nullptr || temperature == nullptr)
         return -1;
 
-    // Need to get the values to themselves (bitwise operation)
-    *zVal = (wakeupRegisterRead[6] << 8) & wakeupRegisterRead[7];
-    *yVal = (wakeupRegisterRead[4] << 8) & wakeupRegisterRead[5];
-    *xVal = (wakeupRegisterRead[2] << 8) & wakeupRegisterRead[3];
-    *temperature = (wakeupRegisterRead[0] << 8) & wakeupRegisterRead[1];
-
-    // Reads to see if the range is set to 40mT or 80mT
-    uint8_t rangeValXY = getXYAxisRange();
-    uint8_t range = 0;
-    if (rangeValXY == 0)
-    {
-        range = 40;
-    }
-    else if (rangeValXY == 1)
-    {
-        range = 80;
-    }
-
-    // Return the values in the form that the equation will give
-    *temperature = TMAG5273_TSENSE_T0 + (256 * (*temperature - (TMAG5273_TADC_T0 / 256)) / TMAG5273_TADC_RES);
-    *xVal = -(range * (*xVal)) / kDataConversionDivisor;
-    *yVal = -(range * (*yVal)) / kDataConversionDivisor;
-    *zVal = -(range * (*zVal)) / kDataConversionDivisor;
+    *xVal = getXData();
+    *yVal = getYData();
+    *zVal = getZData();
+    *temperature = getTemp();
 
     return getError();
 }
@@ -2158,7 +2133,7 @@ uint8_t TMAG5273::getZAxisRange()
 
 /// @brief Returns an 8-bit, 2's complement X axis threshold code for
 ///  limit check. The range of possible threshold entrees can be +/-128.
-///  The thershold value in mT is calculated as (40(1+X_Y_RANGE)/128)*X_THR_CONFIG.
+///  The threshold value in mT is calculated as (40(1+X_Y_RANGE)/128)*X_THR_CONFIG.
 ///  Default 0h means no threshold comparison.
 ///     TMAG5273_REG_X_THR_CONFIG - bits 7-0
 /// @return Returns the X threshold code for limit check
@@ -2559,57 +2534,41 @@ int8_t TMAG5273::getError()
 float TMAG5273::getTemp()
 {
 
-    // get the LSB and MSB values of the temperature data from the sensor
-    uint8_t tLSB = 0;
-    uint8_t tMSB = 0;
-
-    // Read in the MSB and LSB registers
-    if (_theI2CBus.readRegister(TMAG5273_REG_T_MSB_RESULT, tMSB) != ksfTkErrOk)
-        return 0;
-    if (_theI2CBus.readRegister(TMAG5273_REG_T_LSB_RESULT, tLSB) != ksfTkErrOk)
+    // Read the Temp data - returns the MSB and LSB in one read
+    uint8_t dataBuffer[2];
+    size_t nRead;
+    if (_theI2CBus.readRegister(TMAG5273_REG_T_MSB_RESULT, dataBuffer, 2, nRead) != ksfTkErrOk)
         return 0;
 
     // Combines the two in one register where the MSB is shifted to the correct location
-    int16_t tData = (tMSB << 8) | tLSB;
+    // convert to  int16_t (the data is in 2's complement format)
+    int16_t tData = (dataBuffer[0] << 8) | dataBuffer[1];
 
     // Formula for correct output value
     return TMAG5273_TSENSE_T0 + ((float)(tData - TMAG5273_TADC_T0) / (TMAG5273_TADC_RES));
 }
 
-/// @brief Readcs back the X-Channel data conversion results, the
+///------------------------------------------------------------------------------------------------
+/// @brief Reads back the X-Channel data conversion results, the
 /// MSB 8-Bit and LSB 8-Bits. This reads from the following registers:
 ///     X_MSB_RESULT and X_LSB_RESULT
 /// @return X-Channel data conversion results
 float TMAG5273::getXData()
 {
-    uint8_t xLSB = 0;
-    uint8_t xMSB = 0;
-    if (_theI2CBus.readRegister(TMAG5273_REG_X_LSB_RESULT, xLSB) != ksfTkErrOk)
-        return 0;
-
-    if (_theI2CBus.readRegister(TMAG5273_REG_X_MSB_RESULT, xMSB) != ksfTkErrOk)
+    // Read the X data - returns the MSB and LSB in one read
+    uint8_t dataBuffer[2];
+    size_t nRead;
+    if (_theI2CBus.readRegister(TMAG5273_REG_X_MSB_RESULT, dataBuffer, 2, nRead) != ksfTkErrOk)
         return 0;
 
     // Combines the two in one register where the MSB is shifted to the correct location
-    // convert the uint16_t to int16_t
-    int16_t xData = (xMSB << 8) + xLSB;
+    // convert to  int16_t (the data is in 2's complement format)
+    int16_t xData = (dataBuffer[0] << 8) | dataBuffer[1];
 
     // Reads to see if the range is set to 40mT or 80mT
-    uint8_t rangeValXY = getXYAxisRange();
-    uint32_t range = 0;
-    if (rangeValXY == 0)
-    {
-        range = 40;
-    }
-    else if (rangeValXY == 1)
-    {
-        range = 80;
-    }
+    int32_t range = getXYAxisRange() == 0 ? 40 : 80;
 
-    // 16-bit data format equation
-    float xOut = -(range * xData) / kDataConversionDivisor;
-
-    return xOut;
+    return calculateMagneticField(xData, range);
 }
 
 /// @brief Reads back the Y-Channel data conversion results, the
@@ -2618,36 +2577,20 @@ float TMAG5273::getXData()
 /// @return Y-Channel data conversion results
 float TMAG5273::getYData()
 {
-
-    uint8_t yLSB = 0;
-    uint8_t yMSB = 0;
-    if (_theI2CBus.readRegister(TMAG5273_REG_Y_LSB_RESULT, yLSB) != ksfTkErrOk)
-        return 0;
-
-    if (_theI2CBus.readRegister(TMAG5273_REG_Y_MSB_RESULT, yMSB) != ksfTkErrOk)
+    // Read the Y data - returns the MSB and LSB in one read
+    uint8_t dataBuffer[2];
+    size_t nRead;
+    if (_theI2CBus.readRegister(TMAG5273_REG_Y_MSB_RESULT, dataBuffer, 2, nRead) != ksfTkErrOk)
         return 0;
 
     // Combines the two in one register where the MSB is shifted to the correct location
-    // convert the uint16_t to int16_t
-    int16_t yData = (yMSB << 8) + yLSB;
+    // convert to  int16_t (the data is in 2's complement format)
+    int16_t yData = (dataBuffer[0] << 8) | dataBuffer[1];
 
     // Reads to see if the range is set to 40mT or 80mT
-    uint8_t rangeValXY = getXYAxisRange();
-    uint32_t range = 0;
-    if (rangeValXY == 0)
-    {
-        range = 40;
-    }
-    else if (rangeValXY == 1)
-    {
-        range = 80;
-    }
+    int32_t range = getXYAxisRange() == 0 ? 40 : 80;
 
-    // 16-bit data format equation
-
-    float yOut = (range * yData) / kDataConversionDivisor;
-
-    return yOut;
+    return calculateMagneticField(yData, range);
 }
 
 /// @brief Reads back the Z-Channel data conversion results, the
@@ -2656,37 +2599,21 @@ float TMAG5273::getYData()
 /// @return Z-Channel data conversion results.
 float TMAG5273::getZData()
 {
-    uint8_t zLSB = 0;
-    uint8_t zMSB = 0;
 
-    if (_theI2CBus.readRegister(TMAG5273_REG_Z_LSB_RESULT, zLSB) != ksfTkErrOk)
-        return 0;
-
-    if (_theI2CBus.readRegister(TMAG5273_REG_Z_MSB_RESULT, zMSB) != ksfTkErrOk)
+    // Read the Z data - returns the MSB and LSB in one read
+    uint8_t dataBuffer[2];
+    size_t nRead;
+    if (_theI2CBus.readRegister(TMAG5273_REG_Z_MSB_RESULT, dataBuffer, 2, nRead) != ksfTkErrOk)
         return 0;
 
     // Combines the two in one register where the MSB is shifted to the correct location
-    // convert the uint16_t to int16_t
-    int16_t zData = (zMSB << 8) + zLSB;
+    // convert to  int16_t (the data is in 2's complement format)
+    int16_t zData = (dataBuffer[0] << 8) | dataBuffer[1];
 
     // Reads to see if the range is set to 40mT or 80mT
-    uint8_t rangeValZ = getZAxisRange();
-    uint32_t range = 0;
-    if (rangeValZ == 0)
-    {
-        range = 40;
-    }
-    else if (rangeValZ == 1)
-    {
-        range = 80;
-    }
+    int32_t range = getZAxisRange() == 0 ? 40 : 80;
 
-    // div = (2^16) / 2    (as per the datasheet equation 10)
-    // 16-bit data format equation
-
-    float zOut = (range * zData) / kDataConversionDivisor;
-
-    return zOut;
+    return calculateMagneticField(zData, range);
 }
 
 /// @brief Returns the angle measurement result in degree. The data
