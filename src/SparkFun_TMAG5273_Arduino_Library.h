@@ -126,6 +126,31 @@ class TMAG5273
     int8_t getError();         // Returns an error code (0 is success, negative is failure, positive is warning)
 
   private:
+    //------------------------------------------------------------------------------------------------
+    // Simple function to calculate the Magnetic field strength in mT from raw sensor data
+    // Defining this in the class makes it 'inline' for efficiency
+    //
+    // To convert the raw magnetic data to mT, the datasheet equation (eq 10) is as follows:
+    // B = {-(D15*2^15 + D14*2^14 + ... + D1*2^1 + D0*2^0)/2^16 } * 2*|RANGE|
+    //
+    // Notes:
+    //
+    // - The first section is flipping the sign bit of the data value (2's complement format)
+    //   This is just:  -1 * D
+    //
+    // B = { (-1 * D / 2^16 } * 2*|RANGE|
+    //   = { (-1 * D / 2^16 } * 2*|RANGE|/1
+    //   = ( (-1 * D * 2 * |RANGE| ) / 2^16
+    //   = ( 2 * (-1 * D * |RANGE| ) ) / 2^16
+    //   =  (-1 * D * |RANGE| ) ) / 2^15
+    //
+    // Note: 2^15 = 32768
+
+    float calculateMagneticField(int16_t rawData, int32_t range)
+    {
+        return (float)(-1 * range * rawData) / 32768.f;
+    }
+
     /**
      * @brief Arduino I2C bus interface instance for the AS7343 sensor.
      *
