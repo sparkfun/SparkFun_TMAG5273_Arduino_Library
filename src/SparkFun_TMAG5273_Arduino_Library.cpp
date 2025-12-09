@@ -2625,25 +2625,24 @@ float TMAG5273::getZData()
 /// @return Angle measurement result in degrees (float value)
 float TMAG5273::getAngleResult()
 {
-    uint8_t angleLSB = 0;
-    uint8_t angleMSB = 0;
-    if (_theI2CBus.readRegister(TMAG5273_REG_ANGLE_RESULT_LSB, angleLSB) != ksfTkErrOk)
+    // Read the angle  data - returns the MSB and LSB in one read
+    uint8_t dataBuffer[2];
+    size_t nRead;
+    if (_theI2CBus.readRegister(TMAG5273_REG_ANGLE_RESULT_MSB, dataBuffer, 2, nRead) != ksfTkErrOk)
         return 0;
-    angleLSB = angleLSB & 0b11111111;
-    if (_theI2CBus.readRegister(TMAG5273_REG_ANGLE_RESULT_MSB, angleMSB) != ksfTkErrOk)
-        return 0;
+    // Combines the two in one register where the MSB is shifted to the correct location
+    // convert to  uint16_t (the data is in 2's complement format)
+    uint16_t angleReg = (dataBuffer[0] << 8) | dataBuffer[1];
 
-    // Combining the register value
-    int16_t angleReg = angleLSB + (angleMSB << 8);
+    // the data is formatted  in 13 bits, using 9.4 format (9 bits for integer, 4 bits for fraction (/16))
+    //
+    // fraction value - 4 LSB bits / 16
+    float fractionValue = (float)(angleReg & 0xF) / 16.f;
+    // integer value - shift off the bottom 4 bits, use. the next 9 bits
+    float integerValue = (float)((angleReg >> 4) & 0x1FF);
 
-    // Removing the uneeded bits for the fraction value
-    float decValue = float(angleLSB & 0b1111) / 16;
-
-    // Shift off the decimal value (last 4 bits)
-    int16_t angleVal = angleReg >> 4;
-
-    // Add the two values together now
-    return angleVal + decValue;
+    // return the combined value
+    return integerValue + fractionValue;
 }
 
 /// @brief Returns the resultant vector magnitude (during angle
