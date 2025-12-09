@@ -31,9 +31,9 @@ Features as per datasheet
 /********************************** Constant Variable Definitions **********************************/
 #define TMAG5273_DEVICE_ID_VALUE 0x5449   // Value found in the device ID register
 #define TMAG5273_I2C_ADDRESS_INITIAL 0X22 // Initial I2C address value - can be changed using functions as seen below
-#define TMAG5273_TSENSE_T0 25             // Reference temperature for TADC_T0
+#define TMAG5273_TSENSE_T0 25.0f          // Reference temperature for TADC_T0
 #define TMAG5273_TADC_T0 17508            // Temp result in decimal value (from 16-buit format)
-#define TMAG5273_TADC_RES 60.1            // Temperature sensing resolution (in 16-bit format)
+#define TMAG5273_TADC_RES 60.1f           // Temperature sensing resolution (in 16-bit format)
 
 #define TMAG5273_CRC_DISABLE 0X0 // Disables I2C CRC byte to be sent
 #define TMAG5273_CRC_ENABLE 0X1  // Enable I2C CRC byte to be sent

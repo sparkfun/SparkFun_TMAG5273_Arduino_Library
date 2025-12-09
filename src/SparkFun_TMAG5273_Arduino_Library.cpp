@@ -2558,18 +2558,22 @@ int8_t TMAG5273::getError()
 /// @return T-Channel data conversion results
 float TMAG5273::getTemp()
 {
-    // Variable to store full temperature value
-    int16_t temp = 0;
-    uint8_t databuffer[2];
-    size_t nRead;
+
+    // get the LSB and MSB values of the temperature data from the sensor
+    uint8_t tLSB = 0;
+    uint8_t tMSB = 0;
+
     // Read in the MSB and LSB registers
-    if (_theI2CBus.readRegister(TMAG5273_REG_T_MSB_RESULT, databuffer, 2, nRead) != ksfTkErrOk)
+    if (_theI2CBus.readRegister(TMAG5273_REG_T_MSB_RESULT, tMSB) != ksfTkErrOk)
+        return 0;
+    if (_theI2CBus.readRegister(TMAG5273_REG_T_LSB_RESULT, tLSB) != ksfTkErrOk)
         return 0;
 
     // Combines the two in one register where the MSB is shifted to the correct location
-    temp = (databuffer[0] << 8) | (databuffer[1]);
+    int16_t tData = (tMSB << 8) | tLSB;
+
     // Formula for correct output value
-    return TMAG5273_TSENSE_T0 + (((float)temp - TMAG5273_TADC_T0) / (TMAG5273_TADC_RES));
+    return TMAG5273_TSENSE_T0 + ((float)(tData - TMAG5273_TADC_T0) / (TMAG5273_TADC_RES));
 }
 
 /// @brief Readcs back the X-Channel data conversion results, the
