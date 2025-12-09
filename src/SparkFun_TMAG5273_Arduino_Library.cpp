@@ -49,7 +49,12 @@ int8_t TMAG5273::begin(uint8_t sensorAddress, TwoWire &wirePort)
     setOperatingMode(TMAG5273_CONTINUOUS_MEASURE_MODE);
 
     // 12/2025 - add as part of update -- from a PR pending on the repo
+    // When the device is reset, these settings must also be reset or init can fail
+
+    // No angle calculation
     setAngleEn(TMAG5273_NO_ANGLE_CALCULATION);
+
+    // Set to low active current mode
     setLowPower(TMAG5273_LOW_ACTIVE_CURRENT_MODE);
 
     // Set the axis ranges for the device to be the largest
@@ -76,10 +81,9 @@ int8_t TMAG5273::begin(uint8_t sensorAddress, TwoWire &wirePort)
     if (getTemperatureEN() != TMAG5273_TEMPERATURE_ENABLE)
         return 0;
 
-    // 12/2025 - removed as part of update -- from a PR pending on the repo
-    // // Check that X and Y angle calculation is disabled
-    // if (getAngleEn() != TMAG5273_NO_ANGLE_CALCULATION)
-    //     return 0;
+    // Check that X and Y angle calculation is disabled
+    if (getAngleEn() != TMAG5273_NO_ANGLE_CALCULATION)
+        return 0;
 
     // returns true if all the checks pass
     return 1;
@@ -1022,24 +1026,24 @@ int8_t TMAG5273::setAngleEn(uint8_t angleEnable)
         return -1;
 
     // If-Else statement for writing values to the register, bit by bit
-    if (angleEnable == 0X0) // 0b00
+    if (angleEnable == 0X0) // 0b00 - no angle
     {
         // Write 0 to bit 2 of the register value
         bitWrite(mode, 2, 0);
         // Write 0 to bit 3 of the register value
         bitWrite(mode, 3, 0);
     }
-    else if (angleEnable == 0X1) // 0b01
+    else if (angleEnable == 0X1) // 0b01 1 = X 1st, Y 2nd
     {
         bitWrite(mode, 2, 1);
         bitWrite(mode, 3, 0);
     }
-    else if (angleEnable == 0X2) // 0b10
+    else if (angleEnable == 0X2) // 0b10 2 = Y 1st, Z 2nd
     {
         bitWrite(mode, 2, 0);
         bitWrite(mode, 3, 1);
     }
-    else if (angleEnable == 0X3) // 0b11
+    else if (angleEnable == 0X3) // 0b11 3 = X 1st, Z 2nd
     {
         bitWrite(mode, 2, 1);
         bitWrite(mode, 3, 1);
