@@ -60,6 +60,9 @@ Features as per datasheet
 #define TMAG5273_CONTINUOUS_MEASURE_MODE 0X2 // Continous measure mode
 #define TMAG5273_WAKE_UP_AND_SLEEP_MODE 0X3  // Wake-up and sleep mode
 
+// Sensor Channel Modes
+#define TMAG5273_CHANNEL_MODE_BITS 0xF0 // Bits 7-4
+#define TMAG5273_CHANNEL_MODE_LSB 4
 #define TMAG5273_CHANNELS_OFF 0X0 // Turn all the magnetic channels off
 #define TMAG5273_X_ENABLE 0X1     // X Channel enabled
 #define TMAG5273_Y_ENABLE 0X2     // Y Channel enabled

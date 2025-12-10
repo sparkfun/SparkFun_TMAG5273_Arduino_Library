@@ -557,103 +557,20 @@ int8_t TMAG5273::setOperatingMode(uint8_t opMode)
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setMagneticChannel(uint8_t channelMode)
 {
+    // validate the channelMode input ( valid <= TMAG5273_XZX_ENABLE (0xB) )
+    if (channelMode > TMAG5273_XZX_ENABLE)
+        return -1; // invalid channelMode
+
     uint8_t mode = 0;
 
     sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     if (rc != ksfTkErrOk)
         return -1;
 
-    // If-Else statement for writing values to the register, bit by bit
-    if (channelMode == 0X0) // 0b0000
-    {
-        // Writes 0 to bit 4 of the register
-        bitWrite(mode, 4, 0);
-        // Writes 0 to bit 5 of the register
-        bitWrite(mode, 5, 0);
-        // Writes 0 to bit 6 of the register
-        bitWrite(mode, 6, 0);
-        // Writes 0 to bit 7 of the register
-        bitWrite(mode, 7, 0);
-    }
-    else if (channelMode == 0X1) // 0x0001
-    {
-        bitWrite(mode, 4, 1);
-        bitWrite(mode, 5, 0);
-        bitWrite(mode, 6, 0);
-        bitWrite(mode, 7, 0);
-    }
-    else if (channelMode == 0X2) // 0x0010
-    {
-        bitWrite(mode, 4, 0);
-        bitWrite(mode, 5, 1);
-        bitWrite(mode, 6, 0);
-        bitWrite(mode, 7, 0);
-    }
-    else if (channelMode == 0X3) // 0x0011
-    {
-        bitWrite(mode, 4, 1);
-        bitWrite(mode, 5, 1);
-        bitWrite(mode, 6, 0);
-        bitWrite(mode, 7, 0);
-    }
-    else if (channelMode == 0X4) // 0x0100
-    {
-        bitWrite(mode, 4, 0);
-        bitWrite(mode, 5, 0);
-        bitWrite(mode, 6, 1);
-        bitWrite(mode, 7, 0);
-    }
-    else if (channelMode == 0X5) // 0x0101
-    {
-        bitWrite(mode, 4, 1);
-        bitWrite(mode, 5, 0);
-        bitWrite(mode, 6, 1);
-        bitWrite(mode, 7, 0);
-    }
-    else if (channelMode == 0X6) // 0x0110
-    {
-        bitWrite(mode, 4, 0);
-        bitWrite(mode, 5, 1);
-        bitWrite(mode, 6, 1);
-        bitWrite(mode, 7, 0);
-    }
-    else if (channelMode == 0X7) // 0x0111
-    {
-        bitWrite(mode, 4, 1);
-        bitWrite(mode, 5, 1);
-        bitWrite(mode, 6, 1);
-        bitWrite(mode, 7, 0);
-    }
-    else if (channelMode == 0X8) // 0x1000
-    {
-        bitWrite(mode, 4, 0);
-        bitWrite(mode, 5, 0);
-        bitWrite(mode, 6, 0);
-        bitWrite(mode, 7, 1);
-    }
-    else if (channelMode == 0X9) // 0x1001
-    {
-        bitWrite(mode, 4, 1);
-        bitWrite(mode, 5, 0);
-        bitWrite(mode, 6, 0);
-        bitWrite(mode, 7, 1);
-    }
-    else if (channelMode == 0XA) // 0x1010
-    {
-        bitWrite(mode, 4, 0);
-        bitWrite(mode, 5, 1);
-        bitWrite(mode, 6, 0);
-        bitWrite(mode, 7, 1);
-    }
-    else if (channelMode == 0XB) // 0x1011
-    {
-        bitWrite(mode, 4, 1);
-        bitWrite(mode, 5, 1);
-        bitWrite(mode, 6, 0);
-        bitWrite(mode, 7, 1);
-    }
-    else
-        return -1; // invalid channelMode
+    mode &= ~TMAG5273_CHANNEL_MODE_BITS; // clear our bits
+
+    // Since channelMode passed in is the same as the bit pattern we want, just use that to set the bit
+    mode |= (channelMode << TMAG5273_CHANNEL_MODE_LSB);
 
     rc = _theI2CBus.writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     if (rc != ksfTkErrOk)
