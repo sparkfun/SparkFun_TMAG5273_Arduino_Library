@@ -155,24 +155,17 @@ int8_t TMAG5273::readWakeUpAndSleepData(float *xVal, float *yVal, float *zVal, f
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setCRCMode(uint8_t crcMode)
 {
+
+    if (crcMode > TMAG5273_CRC_ENABLE) // only 0x0 and 0x1 are valid
+        return -1;                     // invalid crcMode
+
     uint8_t mode = 0;
     sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     if (rc != ksfTkErrOk)
         return -1;
 
-    // If-Else statement for writing values to the register, bit by bit
-    if (crcMode == 0)
-    {
-        // adds the crcMode (0 or 1) to bit 7 in the register
-        bitWrite(mode, 7, 0);
-    }
-    else if (crcMode == 1)
-    {
-        // adds the crc_mode (0 or 1) to bit 7 in the register
-        bitWrite(mode, 7, 1);
-    }
-    else
-        return -1; // invalid crcMode
+    mode &= ~TMAG5273_CRC_MODE_BITS; // clear our bit
+    mode |= (crcMode << TMAG5273_CRC_MODE_LSB);
 
     rc = _theI2CBus.writeRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     if (rc != ksfTkErrOk)
@@ -190,34 +183,17 @@ int8_t TMAG5273::setCRCMode(uint8_t crcMode)
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setMagTemp(uint8_t magTempMode)
 {
+    if (magTempMode > TMAG5273_MAG_TEMP_0P2PCT ||
+        magTempMode == TMAG5273_MAG_TEMP_RESERVED) // only 0x0 to 0x3 are valid
+        return -1;
+    // invalid magTempMode
     uint8_t mode = 0;
     sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     if (rc != ksfTkErrOk)
         return -1;
 
-    // If-Else statement for writing values to the register, bit by bit
-    if (magTempMode == 0) // 0b00
-    {
-        bitWrite(mode, 6, 0);
-        bitWrite(mode, 5, 0);
-    }
-    else if (magTempMode == 0x1) // 0b01
-    {
-        bitWrite(mode, 6, 0);
-        bitWrite(mode, 5, 1);
-    }
-    else if (magTempMode == 0x2) // 0b10
-    {
-        bitWrite(mode, 6, 1);
-        bitWrite(mode, 5, 0);
-    }
-    else if (magTempMode == 0x3) // 0b11
-    {
-        bitWrite(mode, 6, 1);
-        bitWrite(mode, 5, 1);
-    }
-    else
-        return -1; // invalid magTempMode
+    mode &= ~TMAG5273_MAG_TEMP_BITS; // clear our bits
+    mode |= (magTempMode << TMAG5273_MAG_TEMP_LSB);
 
     rc = _theI2CBus.writeRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     if (rc != ksfTkErrOk)
@@ -238,51 +214,16 @@ int8_t TMAG5273::setMagTemp(uint8_t magTempMode)
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setConvAvg(uint8_t avgMode)
 {
-    uint8_t mode = 0;
+    if (avgMode > TMAG5273_X32_CONVERSION) // only 0x0 to 0x5 are valid
+        return -1;                         // invalid avgMode
 
+    uint8_t mode = 0;
     sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     if (rc != ksfTkErrOk)
         return -1;
 
-    // If-Else statement for writing values to the register, bit by bit
-    if (avgMode == 0) // 0b000
-    {
-        bitWrite(mode, 2, 0);
-        bitWrite(mode, 3, 0);
-        bitWrite(mode, 4, 0);
-    }
-    else if (avgMode == 0x1) // 0b001
-    {
-        bitWrite(mode, 2, 1);
-        bitWrite(mode, 3, 0);
-        bitWrite(mode, 4, 0);
-    }
-    else if (avgMode == 0x2) // 0b010
-    {
-        bitWrite(mode, 2, 0);
-        bitWrite(mode, 3, 1);
-        bitWrite(mode, 4, 0);
-    }
-    else if (avgMode == 0x3) // 0b011
-    {
-        bitWrite(mode, 2, 1);
-        bitWrite(mode, 3, 1);
-        bitWrite(mode, 4, 0);
-    }
-    else if (avgMode == 0x4) // 0b100
-    {
-        bitWrite(mode, 2, 0);
-        bitWrite(mode, 3, 0);
-        bitWrite(mode, 4, 1);
-    }
-    else if (avgMode == 0x5) // 0b101
-    {
-        bitWrite(mode, 2, 1);
-        bitWrite(mode, 3, 0);
-        bitWrite(mode, 4, 1);
-    }
-    else
-        return -1; // invalid avgMode
+    mode &= ~TMAG5273_CONV_AVG_BITS; // clear our bits
+    mode |= (avgMode << TMAG5273_CONV_AVG_LSB);
 
     rc = _theI2CBus.writeRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     if (rc != ksfTkErrOk)
@@ -302,30 +243,16 @@ int8_t TMAG5273::setConvAvg(uint8_t avgMode)
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setReadMode(uint8_t readMode)
 {
-    uint8_t mode = 0;
+    if (readMode > TMAG5273_I2C_MODE_1BYTE_8BIT) // only 0x0 to 0x2 are valid
+        return -1;                               // invalid readMode
 
+    uint8_t mode = 0;
     sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     if (rc != ksfTkErrOk)
         return -1;
 
-    // Write values to the register, bit by bit
-    if (readMode == 0)
-    {
-        bitWrite(mode, 0, 0);
-        bitWrite(mode, 1, 0);
-    }
-    else if (readMode == 1)
-    {
-        bitWrite(mode, 0, 1);
-        bitWrite(mode, 1, 0);
-    }
-    else if (readMode == 2) //
-    {
-        bitWrite(mode, 0, 0);
-        bitWrite(mode, 1, 1);
-    }
-    else
-        return -1; // invalid readMode
+    mode &= ~TMAG5273_I2C_READ_MODE_BITS; // clear our bits
+    mode |= (readMode << TMAG5273_I2C_READ_MODE_LSB);
 
     rc = _theI2CBus.writeRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     if (rc != ksfTkErrOk)

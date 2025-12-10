@@ -35,9 +35,20 @@ Features as per datasheet
 #define TMAG5273_TADC_T0 17508            // Temp result in decimal value (from 16-buit format)
 #define TMAG5273_TADC_RES 60.1f           // Temperature sensing resolution (in 16-bit format)
 
+#define TMAG5273_CRC_MODE_BITS 0x80 // Bit 7
+#define TMAG5273_CRC_MODE_LSB 7
 #define TMAG5273_CRC_DISABLE 0x0 // Disables I2C CRC byte to be sent
 #define TMAG5273_CRC_ENABLE 0x1  // Enable I2C CRC byte to be sent
 
+#define TMAG5273_MAG_TEMP_BITS 0x60 // Bits 6-5
+#define TMAG5273_MAG_TEMP_LSB 5
+#define TMAG5273_MAG_TEMP_0PCT 0x0     // 0% (No temperature compensation)
+#define TMAG5273_MAG_TEMP_0P12PCT 0x1  // 0.12%/deg C (NdBFe)
+#define TMAG5273_MAG_TEMP_RESERVED 0x2 // Reserved
+#define TMAG5273_MAG_TEMP_0P2PCT 0x3   //
+
+#define TMAG5273_CONV_AVG_BITS 0x1A // Bits 4-2
+#define TMAG5273_CONV_AVG_LSB 2
 #define TMAG5273_X1_CONVERSION 0x0  // 1X Average
 #define TMAG5273_X2_CONVERSION 0x1  // 2X Average
 #define TMAG5273_X4_CONVERSION 0x2  // 4X Average
@@ -45,6 +56,8 @@ Features as per datasheet
 #define TMAG5273_X16_CONVERSION 0x4 // 16X Average
 #define TMAG5273_X32_CONVERSION 0x5 // 32X Average
 
+#define TMAG5273_I2C_READ_MODE_BITS 0x03 // Bits 1-0
+#define TMAG5273_I2C_READ_MODE_LSB 0
 #define TMAG5273_I2C_MODE_3BYTE 0x0       // Standard I2C 3-byte read command
 #define TMAG5273_I2C_MODE_1BYTE_16BIT 0x1 // 1-byte I2C read command for 16bit sensor data and conversion status
 #define TMAG5273_I2C_MODE_1BYTE_8BIT 0x2  // 1-byte I2C read command for 8 bit sensor MSB data and conversion status
