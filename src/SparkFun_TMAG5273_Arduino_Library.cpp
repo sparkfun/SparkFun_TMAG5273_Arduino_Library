@@ -599,105 +599,20 @@ int8_t TMAG5273::setMagneticChannel(uint8_t channelMode)
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
 {
+    // validate the sleepTime input ( valid <= TMAG5273_SLEEP_20000MS (0xC) )
+    if (sleepTime > TMAG5273_SLEEP_20000MS)
+        return -1; // invalid sleepTime
+
     uint8_t mode = 0;
 
     sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     if (rc != ksfTkErrOk)
         return -1;
 
-    if (sleepTime == 0X0) // 0b0000
-    {
-        bitWrite(mode, 0, 0);
-        bitWrite(mode, 1, 0);
-        bitWrite(mode, 2, 0);
-        bitWrite(mode, 3, 0);
-    }
-    else if (sleepTime == 0X1) // 0b0001
-    {
-        bitWrite(mode, 0, 1);
-        bitWrite(mode, 1, 0);
-        bitWrite(mode, 2, 0);
-        bitWrite(mode, 3, 0);
-    }
-    else if (sleepTime == 0X2) // 0b0010
-    {
-        bitWrite(mode, 0, 0);
-        bitWrite(mode, 1, 1);
-        bitWrite(mode, 2, 0);
-        bitWrite(mode, 3, 0);
-    }
-    else if (sleepTime == 0X3) // 0b0011
-    {
-        bitWrite(mode, 0, 1);
-        bitWrite(mode, 1, 1);
-        bitWrite(mode, 2, 0);
-        bitWrite(mode, 3, 0);
-    }
-    else if (sleepTime == 0X4) // 0b0100
-    {
-        bitWrite(mode, 0, 0);
-        bitWrite(mode, 1, 0);
-        bitWrite(mode, 2, 1);
-        bitWrite(mode, 3, 0);
-    }
-    else if (sleepTime == 0X5) // 0b0101
-    {
-        bitWrite(mode, 0, 1);
-        bitWrite(mode, 1, 0);
-        bitWrite(mode, 2, 1);
-        bitWrite(mode, 3, 0);
-    }
-    else if (sleepTime == 0X6) // 0b0110
-    {
-        bitWrite(mode, 0, 0);
-        bitWrite(mode, 1, 1);
-        bitWrite(mode, 2, 1);
-        bitWrite(mode, 3, 0);
-    }
-    else if (sleepTime == 0X7) // 0b0111
-    {
-        bitWrite(mode, 0, 1);
-        bitWrite(mode, 1, 1);
-        bitWrite(mode, 2, 1);
-        bitWrite(mode, 3, 0);
-    }
-    else if (sleepTime == 0X8) // 0b1000
-    {
-        bitWrite(mode, 0, 0);
-        bitWrite(mode, 1, 0);
-        bitWrite(mode, 2, 0);
-        bitWrite(mode, 3, 1);
-    }
-    else if (sleepTime == 0X9) // 0b1001
-    {
-        bitWrite(mode, 0, 1);
-        bitWrite(mode, 1, 0);
-        bitWrite(mode, 2, 0);
-        bitWrite(mode, 3, 1);
-    }
-    else if (sleepTime == 0XA) // 0b1010
-    {
-        bitWrite(mode, 0, 0);
-        bitWrite(mode, 1, 1);
-        bitWrite(mode, 2, 0);
-        bitWrite(mode, 3, 1);
-    }
-    else if (sleepTime == 0XB) // 0b1011
-    {
-        bitWrite(mode, 0, 1);
-        bitWrite(mode, 1, 1);
-        bitWrite(mode, 2, 0);
-        bitWrite(mode, 3, 1);
-    }
-    else if (sleepTime == 0XC) // 0b1100
-    {
-        bitWrite(mode, 0, 0);
-        bitWrite(mode, 1, 0);
-        bitWrite(mode, 2, 1);
-        bitWrite(mode, 3, 1);
-    }
-    else
-        return -1; // invalid channelMode
+    mode &= ~TMAG5273_SLEEP_MODE_BITS; // clear our bits
+
+    // Since sleepTime passed in is the same as the bit pattern we want, just use that to set the bit
+    mode |= (sleepTime << TMAG5273_SLEEP_MODE_LSB);
 
     rc = _theI2CBus.writeRegister(TMAG5273_REG_SENSOR_CONFIG_1, mode);
     if (rc != ksfTkErrOk)

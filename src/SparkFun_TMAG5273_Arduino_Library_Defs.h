@@ -76,6 +76,8 @@ Features as per datasheet
 #define TMAG5273_YZY_ENABLE 0XA   // YZY Channel enabled
 #define TMAG5273_XZX_ENABLE 0XB   // XZX Channel enabled
 
+#define TMAG5273_SLEEP_MODE_BITS 0x0F // Bits 3-0
+#define TMAG5273_SLEEP_MODE_LSB 0
 #define TMAG5273_SLEEP_1MS 0X0     // 1ms
 #define TMAG5273_SLEEP_5MS 0X1     // 5ms
 #define TMAG5273_SLEEP_10MS 0X2    // 10 ms
