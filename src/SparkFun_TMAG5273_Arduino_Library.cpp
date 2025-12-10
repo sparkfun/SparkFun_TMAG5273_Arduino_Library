@@ -630,24 +630,16 @@ int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setMagDir(uint8_t threshDir)
 {
-    uint8_t mode = 0;
+    if (threshDir > TMAG5273_THRESHOLD_INT_BELOW) // only 0x0 and 0x1 are valid
+        return -1;                                // invalid threshDir
 
+    uint8_t mode = 0;
     sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
     if (rc != ksfTkErrOk)
         return -1;
 
-    // If-Else statement for writing values to the register, bit by bit
-    if (threshDir == 0X0) // 0b0
-    {
-        // Write 0 to bit 5 of the register value
-        bitWrite(mode, 5, 0);
-    }
-    else if (threshDir == 0X1) // 0b1
-    {
-        bitWrite(mode, 5, 1);
-    }
-    else
-        return -1; // invalid threshDir
+    mode &= ~TMAG5273_THRESHOLD_INT_BITS; // clear our bit
+    mode |= (threshDir << TMAG5273_THRESHOLD_INT_LSB);
 
     rc = _theI2CBus.writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
     if (rc != ksfTkErrOk)
@@ -665,23 +657,16 @@ int8_t TMAG5273::setMagDir(uint8_t threshDir)
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setMagnitudeGain(uint8_t gainAdjust)
 {
+    if (gainAdjust > TMAG5273_GAIN_ADJUST_CHANNEL_2) // only 0x0 and 0x1 are valid
+        return -1;
+    // invalid threshDir
     uint8_t mode = 0;
     sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
     if (rc != ksfTkErrOk)
         return -1;
 
-    // If-Else statement for writing values to the register, bit by bit
-    if (gainAdjust == 0X0) // 0b0
-    {
-        // Write 0 to bit 4 of the register value
-        bitWrite(mode, 4, 0);
-    }
-    else if (gainAdjust == 0X1) // 0b1
-    {
-        bitWrite(mode, 4, 1);
-    }
-    else
-        return -1; // invalid threshDir
+    mode &= ~TMAG5273_GAIN_ADJUST_BITS; // clear our bit
+    mode |= (gainAdjust << TMAG5273_GAIN_ADJUST_LSB);
 
     rc = _theI2CBus.writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
     if (rc != ksfTkErrOk)
@@ -826,37 +811,16 @@ int8_t TMAG5273::setMagneticOffset2(float offset2)
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setAngleEn(uint8_t angleEnable)
 {
-    uint8_t mode = 0;
+    if (angleEnable > TMAG5273_XZ_ANGLE_CALCULATION) // only 0x0 to 0x3 are valid
+        return -1;                                   // invalid angleEnable
 
+    uint8_t mode = 0;
     sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
     if (rc != ksfTkErrOk)
         return -1;
 
-    // If-Else statement for writing values to the register, bit by bit
-    if (angleEnable == 0X0) // 0b00 - no angle
-    {
-        // Write 0 to bit 2 of the register value
-        bitWrite(mode, 2, 0);
-        // Write 0 to bit 3 of the register value
-        bitWrite(mode, 3, 0);
-    }
-    else if (angleEnable == 0X1) // 0b01 1 = X 1st, Y 2nd
-    {
-        bitWrite(mode, 2, 1);
-        bitWrite(mode, 3, 0);
-    }
-    else if (angleEnable == 0X2) // 0b10 2 = Y 1st, Z 2nd
-    {
-        bitWrite(mode, 2, 0);
-        bitWrite(mode, 3, 1);
-    }
-    else if (angleEnable == 0X3) // 0b11 3 = X 1st, Z 2nd
-    {
-        bitWrite(mode, 2, 1);
-        bitWrite(mode, 3, 1);
-    }
-    else
-        return -1; // invalid angleEnable
+    mode &= ~TMAG5273_ANGLE_CALCULATION_BITS; // clear our bits
+    mode |= (angleEnable << TMAG5273_ANGLE_CALCULATION_LSB);
 
     rc = _theI2CBus.writeRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
     if (rc != ksfTkErrOk)

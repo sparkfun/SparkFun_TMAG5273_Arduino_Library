@@ -95,12 +95,18 @@ Features as per datasheet
 #define TMAG5273_THRESHOLD_1 0x0 // 1 Threshold crossing
 #define TMAG5273_THRESHOLD_4 0x1 // 4 Threshold crossing
 
+#define TMAG5273_THRESHOLD_INT_BITS 0x20 // Bit 5
+#define TMAG5273_THRESHOLD_INT_LSB 5
 #define TMAG5273_THRESHOLD_INT_ABOVE 0x0 // Sets interrupt for field above the threshold
 #define TMAG5273_THRESHOLD_INT_BELOW 0x1 // Sets interrupt for field below the threshold
 
+#define TMAG5273_GAIN_ADJUST_BITS 0x10 // bit 4
+#define TMAG5273_GAIN_ADJUST_LSB 4
 #define TMAG5273_GAIN_ADJUST_CHANNEL_1 0x0 // 1st channel is selected for gain adjustment
 #define TMAG5273_GAIN_ADJUST_CHANNEL_2 0x1 // 2nd channel is selected for gain adjustment
 
+#define TMAG5273_ANGLE_CALCULATION_BITS 0x0C // Bits 3-2
+#define TMAG5273_ANGLE_CALCULATION_LSB 2
 #define TMAG5273_NO_ANGLE_CALCULATION 0x0 // No angle calculation, magnetic gain, and offset correction enabled
 #define TMAG5273_XY_ANGLE_CALCULATION 0x1 // X 1st, Y 2nd
 #define TMAG5273_YZ_ANGLE_CALCULATION 0x2 // Y 1st, Z 2nd
