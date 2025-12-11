@@ -34,8 +34,8 @@ class TMAG5273
     int8_t isConnected();         // Checks for I2C address verification along with the device address
     int8_t setupWakeUpAndSleep(); // Sets the device to be in Wake Up and Sleep Mode
 
-    int8_t readWakeUpAndSleepData(float *xVal, float *yVal, float *zVal,
-                                  float *temperature); // Returns the data for the X, Y, Z, and T values
+    int8_t readWakeUpAndSleepData(float &xVal, float &yVal, float &zVal,
+                                  float &temperature); // Returns the data for the X, Y, Z, and T values
 
     // Set Device Configuration Register Settings
     int8_t setCRCMode(uint8_t crcMode);     // Sets the I2C CRC byte to be sent
@@ -55,7 +55,7 @@ class TMAG5273
     int8_t setMagneticGain(uint8_t magneticGain);   // Sets the 8-bit gain value to adjust a Hall axis gain
     int8_t setMagneticOffset1(int8_t offset1);      // Sets the offset value determined by a primary for the first axis
     int8_t setMagneticOffset2(int8_t offset2);      // Sets the offset value determined by a primary for the second axis
-    int8_t setAngleEn(uint8_t angleEnable);         // Sets the angle caluclation, mag gain, and offset corections
+    int8_t setAngleEn(uint8_t angleEnable);         // Sets the angle calculation, mag gain, and offset corrections
     int8_t setXYAxisRange(uint8_t xyAxisRange);     // Sets the X and Y axes magnetic range from ±40mT or ±80mT
     int8_t setZAxisRange(uint8_t zAxisRange);       // Sets the Z axis magnetic range from ±40mT or ±80mT
     int8_t setXThreshold(int8_t xThreshold);        // Sets the X axis threshold code for limit check
@@ -66,8 +66,8 @@ class TMAG5273
         bool temperatureEnable); // Sets the enable bit that determines the data acquisition of the temp channel
     int8_t setInterruptResult(bool interruptEnable); // Sets the enable interrupt response bit on conversion complete
     int8_t setThresholdEn(
-        bool enableInterruptResponse); // Configures bit to enable interrupt response on predefined thershold cross
-    int8_t setIntPinState(bool interruptState);         // Emables the interrupt if latched or pulsed
+        bool enableInterruptResponse); // Configures bit to enable interrupt response on predefined threshold cross
+    int8_t setIntPinState(bool interruptState);         // Enables the interrupt if latched or pulsed
     int8_t setInterruptMode(uint8_t configurationMode); // Configures the interrupt mode select
     int8_t setMaskInterrupt(bool interruptPinEnable);   // Configres the Mask !INT pin when !INT connected to GND
     int8_t setI2CAddress(uint8_t address);              // Change these bits to a new I2C address if required
@@ -85,7 +85,7 @@ class TMAG5273
     uint8_t getGlitchFiler();            // Returns I2C glitch filter on or off
     uint8_t getTriggerMode();            // Returns if trigger is set to I2C command or INT pin
     uint8_t getOperatingMode();          // Returns the operating mode from 1 of the 4 modes.
-    uint8_t getMagneticChannel();        // Returns data acquisiton from the list of mag axis channels
+    uint8_t getMagneticChannel();        // Returns data acquisition from the list of mag axis channels
     uint8_t getSleeptime();              // Returns the time spent in low power mode
     uint8_t getMagDir();                 // Returns the direction of threshold check
     uint8_t getMagnitudeChannelSelect(); // Returns the axis for magnitude gain correct XYAxisRange section value
@@ -106,7 +106,7 @@ class TMAG5273
     uint8_t getInterruptMode();          // Returns the configuration for the interrupt mode select
     uint8_t getMaskInt();                // Returns the Mask !INT pin when !INT is connected to GND
     uint8_t getSetCount();               // Returns the rolling count of conversion data sets
-    uint8_t getPOR();                    // Returns if the device is powered up or expereinced POR
+    uint8_t getPOR();                    // Returns if the device is powered up or experienced POR
     uint8_t getDiagStatus();             // Returns if there was a detection of any internal diagnostics fail
     uint8_t getResultStatus();           // Returns the conversion data buffer status (Data complete or not)
     uint8_t getI2CAddress();             // Returns the I2C address of the device
@@ -150,7 +150,37 @@ class TMAG5273
     {
         return (float)(-1 * range * rawData) / 32768.f;
     }
+    // Helpful functions for  for bit field setting and getting - this
+    // is performed often with this library, so defining methods to
+    // simplify the code and minimize mistakes
 
+    // getBitFieldValue() macro
+    //  - bitfield -: variable containing the bit field to pull the value out
+    //  - bit_mask -: mask for the bit field to pull out
+    //  - bit_lsb -: least significant bit position of the bit field
+    // Example Usage:
+    // uint8_t mydata = getBitFieldValue(angleReg, TMAG5273_ANGLE_CALCULATION_BITS,
+    //                                   TMAG5273_ANGLE_CALCULATION_LSB);
+    //
+    uint8_t getBitFieldValue(uint8_t bitfield, uint8_t bit_mask, uint8_t bit_lsb)
+    {
+        // mask out other bits, shift down LSB to position to bit 0 and return
+        return (bitfield & bit_mask) >> bit_lsb;
+    }
+
+    // setBitFieldValue() macro
+    //  - bitfield -: variable containing the bit field to set the value in
+    //  - bit_mask -: mask for the bit field to set
+    //  - bit_lsb -: least significant bit position of the bit field
+    //  - new_value -: new value to set the bit field to
+    // Example Usage:
+    // angleReg = setBitFieldValue(angleReg, TMAG5273_ANGLE_CALCULATION_BITS,
+    //                             TMAG5273_ANGLE_CALCULATION_LSB, mydata);
+    uint8_t setBitFieldValue(uint8_t bitfield, uint8_t new_value, uint8_t bit_mask, uint8_t bit_lsb)
+    {
+        // mask out the target bits, shift data to location and or in new value
+        return (bitfield & ~bit_mask) | (new_value << bit_lsb);
+    }
     /**
      * @brief Arduino I2C bus interface instance for the AS7343 sensor.
      *

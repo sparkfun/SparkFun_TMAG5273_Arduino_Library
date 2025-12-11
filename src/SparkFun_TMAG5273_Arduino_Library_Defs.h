@@ -223,6 +223,23 @@ Features as per datasheet
 #define TMAG5273_DEVICE_STATUS_INTR_RB_BITS 0x10 // Bit 4
 #define TMAG5273_DEVICE_STATUS_INTR_RB_LSB 4
 
+#define TMAG5273_DEVICE_STATUS_OSCILLATOR_ERROR_BITS 0x08 // Bit 3
+#define TMAG5273_DEVICE_STATUS_OSCILLATOR_ERROR_LSB 3
+
+#define TMAG5273_DEVICE_STATUS_INT_ERROR_BITS 0x04 // Bit 2
+#define TMAG5273_DEVICE_STATUS_INT_ERROR_LSB 2
+
+#define TMAG5273_DEVICE_STATUS_OTP_CRC_ERROR_BITS 0x02 // Bit 1
+#define TMAG5273_DEVICE_STATUS_OTP_CRC_ERROR_LSB 1
+
+#define TMAG5273_DEVICE_STATUS_VCC_UV_ERROR_BITS 0x01 // Bit 0
+#define TMAG5273_DEVICE_STATUS_VCC_UV_ERROR_LSB 0
+
+// From the datasheet - section 8.2.1.2 - Settings to place the sensor in  Wakeup and Sleep Mode
+// these are typed consts to support method overloading
+const uint8_t TMAG5273_WAKEUP_SLEEP_MODE_INT_CONFIG_1_SETTINGS = 0x64;
+const uint8_t TMAG5273_WAKEUP_SLEEP_MODE_DEVICE_CONFIG_2_SETTINGS = 0x23;
+
 /********************************** Register Definitions **********************************/
 
 const uint8_t TMAG5273_REG_DEVICE_CONFIG_1 = 0x00;
