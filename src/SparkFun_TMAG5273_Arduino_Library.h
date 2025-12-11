@@ -52,15 +52,15 @@ class TMAG5273
     int8_t setSleeptime(uint8_t sleepTime);         // Sets the time spent in low power mode between conversions
     int8_t setMagDir(uint8_t threshDir);            // Sets the direction of threshold check
     int8_t setMagnitudeGain(uint8_t gainAdjust);    // Sets the axis for magnitude gain correction value
-    int8_t setMagneticGain(float magneticGain);     // Sets the 8-bit gain value to adjust a Hall axis gain
+    int8_t setMagneticGain(uint8_t magneticGain);   // Sets the 8-bit gain value to adjust a Hall axis gain
     int8_t setMagneticOffset1(float offset1);       // Sets the offset value determined by a primary for the first axis
     int8_t setMagneticOffset2(float offset2);       // Sets the offset value determined by a primary for the second axis
     int8_t setAngleEn(uint8_t angleEnable);         // Sets the angle caluclation, mag gain, and offset corections
     int8_t setXYAxisRange(uint8_t xyAxisRange);     // Sets the X and Y axes magnetic range from ±40mT or ±80mT
     int8_t setZAxisRange(uint8_t zAxisRange);       // Sets the Z axis magnetic range from ±40mT or ±80mT
-    int8_t setXThreshold(float xThreshold);         // Sets the X axis threshold code for limit check
-    int8_t setYThreshold(float yThreshold);         // Sets the Y axis threshold code for limit check
-    int8_t setZThreshold(float zThresh);            // Sets the Z axis threshold code for limit check
+    int8_t setXThreshold(int8_t xThreshold);        // Sets the X axis threshold code for limit check
+    int8_t setYThreshold(int8_t yThreshold);        // Sets the Y axis threshold code for limit check
+    int8_t setZThreshold(int8_t zThresh);           // Sets the Z axis threshold code for limit check
     int8_t setTemperatureThreshold(int8_t tempThresh); // Sets the Temperature threshold code for limit check
     int8_t setTemperatureEn(
         bool temperatureEnable); // Sets the enable bit that determines the data acquisition of the temp channel

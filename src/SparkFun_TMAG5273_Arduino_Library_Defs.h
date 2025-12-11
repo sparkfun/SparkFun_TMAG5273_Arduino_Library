@@ -62,12 +62,28 @@ Features as per datasheet
 #define TMAG5273_I2C_MODE_1BYTE_16BIT 0x1 // 1-byte I2C read command for 16bit sensor data and conversion status
 #define TMAG5273_I2C_MODE_1BYTE_8BIT 0x2  // 1-byte I2C read command for 8 bit sensor MSB data and conversion status
 
+#define TMAG5273_THR_HYST_BITS 0xE0 // Bits 7-5
+#define TMAG5273_THR_HYST_LSB 5
+#define TMAG5273_THRESHOLD_HYST_2COMP 0x0 // 2's complement threshold hysteresis
+#define TMAG5273_THRESHOLD_HYST_7LSB 0x1  // 7 LSB threshold hysteresis
+
+#define TMAG5273_LOW_POWER_BITS 0x10 // Bit 4
+#define TMAG5273_LOW_POWER_LSB 4
 #define TMAG5273_LOW_ACTIVE_CURRENT_MODE 0x0 // Low active current mode
 #define TMAG5273_LOW_NOISE_MODE 0x1          // Low noise mode
 
+#define TMAG5273_GLITCH_FILTER_BITS 0x08 // Bit 3
+#define TMAG5273_GLITCH_FILTER_LSB 3
 #define TMAG5273_GLITCH_ON 0x0  // Glitch filter on
 #define TMAG5273_GLITCH_OFF 0x1 // Glitch filter off
 
+#define TMAG5273_TRIGGER_MODE_BITS 0x04 // Bit 2
+#define TMAG5273_TRIGGER_MODE_LSB 2
+#define TMAG5273_TRIGGER_I2C_COMMAND 0x0 // Triggered by I2C command
+#define TMAG5273_TRIGGER_INT_SIGNAL 0x1  // Triggered by INT signal
+
+#define TMAG5273_OPERATING_MODE_BITS 0x03 // Bits 1-0
+#define TMAG5273_OPERATING_MODE_LSB 0
 #define TMAG5273_STANDY_BY_MODE 0x0          // Stand-by mode
 #define TMAG5273_SLEEP_MODE 0x1              // Sleep mode
 #define TMAG5273_CONTINUOUS_MEASURE_MODE 0x2 // Continous measure mode
@@ -125,33 +141,61 @@ Features as per datasheet
 #define TMAG5273_YZ_ANGLE_CALCULATION 0x2 // Y 1st, Z 2nd
 #define TMAG5273_XZ_ANGLE_CALCULATION 0x3 // X 1st, Z 2nd
 
+// xy axis range bigs
+#define TMAG5273_XY_RANGE_BITS 0x02 // Bit 1
+#define TMAG5273_XY_RANGE_LSB 1
+
+// z axis range bits
+#define TMAG5273_Z_RANGE_BITS 0x01 // Bit 0
+#define TMAG5273_Z_RANGE_LSB 0
+
+// these are the same for xy and z
 #define TMAG5273_RANGE_40MT 0x0 // +/-40mT, DEFAULT
 #define TMAG5273_RANGE_80MT 0x1 // +/-80mT, DEFAULT
 
+#define TMAG5273_TEMPERATURE_BITS 0x01 // Bit 0
+#define TMAG5273_TEMPERATURE_LSB 0
 #define TMAG5273_TEMPERATURE_DISABLE 0x0 // Temperature channel disabled
 #define TMAG5273_TEMPERATURE_ENABLE 0x1  // Temperature channel enabled
+
+#define TMAG5273_INTERRUPT_RESULT_BITS 0x80 // Bit 7
+#define TMAG5273_INTERRUPT_RESULT_LSB 7
+
+#define TMAG5273_INTERRUPT_THRESHOLD_BITS 0x40 // Bit 6
+#define TMAG5273_INTERRUPT_THRESHOLD_LSB 6
 
 #define TMAG5273_INTERRUPT_NOT_ASSERTED 0x0 // Interrupt is not asserved when set
 #define TMAG5273_INTERRUPT_ASSERTED 0x1     // Interrupt is asserted
 
+#define TMAG5273_INTERRUPT_PIN_STATE_BITS 0x20 // Bit 5
+#define TMAG5273_INTERRUPT_PIN_STATE_LSB 5
+
+#define TMAG5273_INTERRUPT_MODE_BITS 0x1C // Bits 4-2
+#define TMAG5273_INTERRUPT_MODE_LSB 2
 #define TMAG5273_NO_INTERRUPT 0x0              // No interrupt
 #define TMAG5273_INTERRUPT_THROUGH_INT 0x1     // Interrupt thru INT
 #define TMAG5273_INTERRUPT_THROUGH_INT_I2C 0x2 // Interrupt thru INT except when I2C bus is busy
 #define TMAG5273_INTERRUPT_THROUGH_SCL 0x3     // Interrupt thru SCL
 #define TMAG5273_INTERRUPT_THROUGH_SCL_I2C 0x4 // Interrupt thru SCL except when I2C bus is busy
 
+#define TMAG5273_INTERRUPT_MASK_BITS 0x01 // Bit 0
+#define TMAG5273_INTERRUPT_MASK_LSB 0
 #define TMAG5273_INTERRUPT_ENABLED 0x0  // Interrupt pin is enabled
 #define TMAG5273_INTERRUPT_DISABLED 0x1 // Interrupt pin is disabled
 
 #define TMAG5273_INT_PIN_ENABLE 0x0  // INT pin is enabled
 #define TMAG5273_INT_PIN_DISABLE 0x1 // INT pin is disabled (for wake-up and trigger functions)
 
+#define TMAG5273_I2C_ADDRESS_CHANGE_BITS 0x00 // Bit 0
+#define TMAG5273_I2C_ADDRESS_CHANGE_LSB 0
 #define TMAG5273_I2C_ADDRESS_CHANGE_DISABLE 0x0 // Disable update of I2C address
 #define TMAG5273_I2C_ADDRESS_CHANGE_ENABLE 0x1  // Enable update of I2C address
 
 #define TMAG5273_NO_POR 0x0  // Conversion data not complete
 #define TMAG5273_YES_POR 0x1 // Conversion data complete
 
+#define TMAG5273_OSCILLATOR_ERROR_BITS 0x08 // Bit 3
+#define TMAG5273_OSCILLATOR_ERROR_LSB 3
 #define TMAG5273_OSCILLATOR_ERROR_UNDETECTED 0x0 // No Oscillator error detected
 #define TMAG5273_OSCILLATOR_ERROR_DETECTED 0x1   // Oscillator error detected
 
