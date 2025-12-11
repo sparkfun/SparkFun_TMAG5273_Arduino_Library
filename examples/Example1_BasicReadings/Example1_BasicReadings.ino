@@ -1,3 +1,27 @@
+/*
+ * ---------------------------------------------------------------------------------
+ * Copyright (c) 2025, SparkFun Electronics Inc.
+ *
+ * SPDX-License-Identifier: MIT
+ * ---------------------------------------------------------------------------------
+ */
+
+/*
+ * Example 1: Basic Readings
+ * -------------------------
+ * This example shows the most basic way to read magnetic and temperature data from the TMAG5273 sensor.
+ * The example initializes the sensor, then continuously reads and prints the X, Y, Z magnetic field
+ * values along with the temperature to the Serial Monitor.
+ *
+ * Hardware Connections:
+ * - Connect the TMAG5273 sensor to the SparkFun Qwiic connector on your SparkFun microcontroller board.
+ *
+ * Note: Make sure to install the SparkFun TMAG5273 Arduino Library before running this example.
+ * You can install it via the Arduino Library Manager or download it from:
+ *      https://github.com/sparkfun/SparkFun_TMAG5273_Arduino_Library
+ *
+ */
+
 #include "SparkFun_TMAG5273_Arduino_Library.h" // Used to send and recieve specific information from our sensor
 #include <Wire.h>                              // Used to establish serial communication on the I2C bus
 
@@ -8,12 +32,16 @@ uint8_t i2cAddress = TMAG5273_I2C_ADDRESS_INITIAL;
 
 void setup()
 {
+    delay(1000);
     Wire.begin();
     // Start serial communication at 115200 baud
     Serial.begin(115200);
 
     // Begin example of the magnetic sensor code (and add whitespace for easy reading)
+    Serial.println("");
+    Serial.println("------------------------------------------------------------------");
     Serial.println("TMAG5273 Example 1: Basic Readings");
+    Serial.println("------------------------------------------------------------------");
     Serial.println("");
 
     // If begin is successful (0), then start example
