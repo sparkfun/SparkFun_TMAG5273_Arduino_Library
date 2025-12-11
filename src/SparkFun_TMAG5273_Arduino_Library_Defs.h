@@ -1,20 +1,17 @@
-/******************************************************************************
-SparkFun_TMAG5273_Arduino_Library_Defs.h
-SparkFunTMAG5273 Library Definitions Header File
-Madison Chodikov @ SparkFun Electronics
-Original Creation Date: May 1st, 2023
-https://github.com/sparkfun/SparkFun_TMAG5273_Arduino_Library
 
-This file defines all of the constants used in the device library,
-along with defining the registers used.
-
-Development environment specifics:
-    IDE: Arduino 2.1.0
-    Hardware Platform: Arduino Uno
-    TMAG5273 Breakout Version: 1.0.1
-Distributed as-is; no warranty is given.
-******************************************************************************/
-
+/**
+ * @file SparkFun_TMAG5273_Arduino_Library_Defs.h
+ * @brief Arduino library definition header for the SparkFun TMAG5273 Magnetic Sensor.
+ *
+ * Library repository: https://github.com/sparkfun/SparkFun_TMAG5273_Arduino_Library
+ *
+ * @author SparkFun Electronics
+ * @date   2025
+ * @copyright Copyright (c) 2023-2025 SparkFun Electronics Inc.
+ *
+ * SPDX-License-Identifier: MIT
+ *
+ */
 /*
 Features as per datasheet
     - ±40mT on the X, Y linear magnetic range
@@ -25,14 +22,13 @@ Features as per datasheet
         - ±3 µT Offset Drift
 */
 
-#ifndef __SparkFun_TMAG5273_Arduino_Library_Defs_H__
-#define __SparkFun_TMAG5273_Arduino_Library_Defs_H__
+#pragma once
 
 /********************************** Constant Variable Definitions **********************************/
 #define TMAG5273_DEVICE_ID_VALUE 0x5449   // Value found in the device ID register
 #define TMAG5273_I2C_ADDRESS_INITIAL 0x22 // Initial I2C address value - can be changed using functions as seen below
 #define TMAG5273_TSENSE_T0 25.0f          // Reference temperature for TADC_T0
-#define TMAG5273_TADC_T0 17508            // Temp result in decimal value (from 16-buit format)
+#define TMAG5273_TADC_T0 17508            // Temp result in decimal value (from 16-bit format)
 #define TMAG5273_TADC_RES 60.1f           // Temperature sensing resolution (in 16-bit format)
 
 #define TMAG5273_CRC_MODE_BITS 0x80 // Bit 7
@@ -84,7 +80,7 @@ Features as per datasheet
 
 #define TMAG5273_OPERATING_MODE_BITS 0x03 // Bits 1-0
 #define TMAG5273_OPERATING_MODE_LSB 0
-#define TMAG5273_STANDY_BY_MODE 0x0          // Stand-by mode
+#define TMAG5273_STANDBY_BY_MODE 0x0         // Stand-by mode
 #define TMAG5273_SLEEP_MODE 0x1              // Sleep mode
 #define TMAG5273_CONTINUOUS_MEASURE_MODE 0x2 // Continuous measure mode
 #define TMAG5273_WAKE_UP_AND_SLEEP_MODE 0x3  // Wake-up and sleep mode
@@ -271,5 +267,3 @@ const uint8_t TMAG5273_REG_ANGLE_RESULT_MSB = 0x19;
 const uint8_t TMAG5273_REG_ANGLE_RESULT_LSB = 0x1A;
 const uint8_t TMAG5273_REG_MAGNITUDE_RESULT = 0x1B;
 const uint8_t TMAG5273_REG_DEVICE_STATUS = 0x1C;
-
-#endif

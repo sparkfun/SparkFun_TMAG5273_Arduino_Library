@@ -1,23 +1,18 @@
-/******************************************************************************
-SparkFun_TMAG5273_Arduino_Library.h
-SparkFunTMAG5273 Library Source File
-Madison Chodikov @ SparkFun Electronics
-Original Creation Date: May 1st, 2023
-https://github.com/sparkfun/SparkFun_TMAG5273_Arduino_Library
+/**
+ * @file SparkFun_TMAG5273_Arduino_Library.h
+ * @brief Arduino library header for the SparkFun TMAG5273 Magnetic Sensor.
+ *
+ * Library repository: https://github.com/sparkfun/SparkFun_TMAG5273_Arduino_Library
+ *
+ * @author SparkFun Electronics
+ * @date   2025
+ * @copyright Copyright (c) 2023-2025 SparkFun Electronics Inc. This project is released under the MIT License.
+ *
+ * SPDX-License-Identifier: MIT
+ *
+ */
 
-This header file implements all functions of the TMAG5273. Functions here range
-from reading the X, Y,and Z Magnetic Fields, to reading and writing various
-settings in the sensor.
-
-Development environment specifics:
-    IDE: Arduino 2.1.0
-    Hardware Platform: Arduino Uno
-    TMAG5273 Breakout Version: 1.0.1
-Distributed as-is; no warranty is given.
-******************************************************************************/
-
-#ifndef __SparkFun_TMAG5273_Arduino_Library_H__
-#define __SparkFun_TMAG5273_Arduino_Library_H__
+#pragma once
 
 #include <Arduino.h>
 #include <Wire.h>
@@ -194,5 +189,3 @@ class TMAG5273
      */
     sfTkArdI2C _theI2CBus;
 };
-
-#endif
