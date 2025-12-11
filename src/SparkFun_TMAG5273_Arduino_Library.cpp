@@ -1398,31 +1398,8 @@ uint8_t TMAG5273::getAngleEn()
     if (_theI2CBus.readRegister(TMAG5273_REG_SENSOR_CONFIG_2, angleReg) != ksfTkErrOk)
         return 0;
 
-    uint8_t angleDir2 = bitRead(angleReg, 2);
-    uint8_t angleDir3 = bitRead(angleReg, 3);
-
-    if ((angleDir2 == 0) && (angleDir3 == 0)) // 0b00
-    {
-        // NO angle calculation
-        return 0;
-    }
-    else if ((angleDir2 == 1) && (angleDir3 == 0)) // 0b01
-    {
-        // X 1st, Y 2nd
-        return 1;
-    }
-    else if ((angleDir2 == 0) && (angleDir3 == 1)) // 0b10
-    {
-        // Y 1st, Z 2nd
-        return 2;
-    }
-    else if ((angleDir2 == 1) && (angleDir3 == 1)) // 0b11
-    {
-        // X 1st, Z 2nd
-        return 3;
-    }
-
-    return 0;
+    angleReg &= ~TMAG5273_ANGLE_CALCULATION_BITS;
+    return angleReg >> TMAG5273_ANGLE_CALCULATION_LSB;
 }
 
 /// @brief Returns the X and Y axes magnetic range from the
@@ -1437,9 +1414,8 @@ uint8_t TMAG5273::getXYAxisRange()
     if (_theI2CBus.readRegister(TMAG5273_REG_SENSOR_CONFIG_2, XYrangeReg) != ksfTkErrOk)
         return 0;
 
-    uint8_t axisRange = bitRead(XYrangeReg, 1);
-
-    return (axisRange == 1 ? 1 : 0);
+    XYrangeReg &= ~TMAG5273_XY_RANGE_BITS;
+    return XYrangeReg >> TMAG5273_XY_RANGE_LSB;
 }
 
 /// @brief Returns the Z axis magnetic range from the
@@ -1454,67 +1430,58 @@ uint8_t TMAG5273::getZAxisRange()
     if (_theI2CBus.readRegister(TMAG5273_REG_SENSOR_CONFIG_2, ZrangeReg) != ksfTkErrOk)
         return 0;
 
-    uint8_t ZaxisRange = bitRead(ZrangeReg, 0);
-
-    return (ZaxisRange == 1 ? 1 : 0);
+    ZrangeReg &= ~TMAG5273_Z_RANGE_BITS;
+    return ZrangeReg >> TMAG5273_Z_RANGE_LSB;
 }
 
 /// @brief Returns an 8-bit, 2's complement X axis threshold code for
 ///  limit check. The range of possible threshold entrees can be +/-128.
 ///  The threshold value in mT is calculated as (40(1+X_Y_RANGE)/128)*X_THR_CONFIG.
+///  The value of X_THR_CONFIG is returned by this method
 ///  Default 0h means no threshold comparison.
 ///     TMAG5273_REG_X_THR_CONFIG - bits 7-0
 /// @return Returns the X threshold code for limit check
-float TMAG5273::getXThreshold()
+int8_t TMAG5273::getXThreshold()
 {
 
     uint8_t tempRead;
     if (_theI2CBus.readRegister(TMAG5273_REG_X_THR_CONFIG, tempRead) != ksfTkErrOk)
         return 0;
 
-    int8_t xThresh = *(int8_t *)&tempRead;
-
-    uint8_t range = getXYAxisRange();
-
-    return (float)(40. * (1 + range)) / 128. * xThresh;
+    return *(int8_t *)&tempRead;
 }
 
 /// @brief Returns an 8-bit, 2's complement Y axis threshold code for
 ///  limit check. The range of possible threshold entrees can be +/-128.
-///  The thershold value in mT is calculated as (40(1+X_Y_RANGE)/128)*Y_THR_CONFIG.
+///  The threshold value in mT is calculated as (40(1+X_Y_RANGE)/128)*Y_THR_CONFIG.
+///  The value of Y_THR_CONFIG is returned by this method
 ///  Default 0h means no threshold comparison.
 ///     TMAG5273_REG_Y_THR_CONFIG - bits 7-0
 /// @return Returns the Y threshold code for limit check
-float TMAG5273::getYThreshold()
+int8_t TMAG5273::getYThreshold()
 {
 
     uint8_t tempRead;
     if (_theI2CBus.readRegister(TMAG5273_REG_Y_THR_CONFIG, tempRead) != ksfTkErrOk)
         return 0;
 
-    int8_t yThresh = *(int8_t *)&tempRead;
-
-    uint8_t range = getXYAxisRange();
-
-    return (float)(40. * (1. + range)) / 128. * yThresh;
+    return *(int8_t *)&tempRead;
 }
 
 /// @brief Returns an 8-bit, 2's complement Z axis threshold code for
 ///  limit check. The range of possible threshold entrees can be +/-128.
-///  The thershold value in mT is calculated as (40(1+Z_RANGE)/128)*Z_THR_CONFIG.
+///  The threshold value in mT is calculated as (40(1+Z_RANGE)/128)*Z_THR_CONFIG.
+///  The value of Z_THR_CONFIG is returned by this method
 ///  Default 0h means no threshold comparison.
 ///     TMAG5273_REG_Z_THR_CONFIG - bits 7-0
 /// @return Returns the Z threshold code for limit check
-float TMAG5273::getZThreshold()
+int8_t TMAG5273::getZThreshold()
 {
     uint8_t tempRead;
     if (_theI2CBus.readRegister(TMAG5273_REG_Z_THR_CONFIG, tempRead) != ksfTkErrOk)
         return 0;
 
-    int8_t zThresh = *(int8_t *)&tempRead;
-    uint8_t range = getZAxisRange();
-
-    return (float)(40. * (1. + range)) / 128. * zThresh;
+    return *(int8_t *)&tempRead;
 }
 
 /// @brief Returns the temperature threshold code entered by the user.
@@ -1523,16 +1490,15 @@ float TMAG5273::getZThreshold()
 ///  8 degree C/LSB. Default 0x0 means no threshold comparison.
 ///     TMAG5273_REG_T_CONFIG - bits 7-1
 /// @return Temperature threshold code entered by the user originally.
-float TMAG5273::getTemperatureThreshold()
+uint8_t TMAG5273::getTemperatureThreshold()
 {
 
     uint8_t tempRead;
     if (_theI2CBus.readRegister(TMAG5273_REG_T_CONFIG, tempRead) != ksfTkErrOk)
         return 0;
 
-    int8_t tempThreshReg = *(int8_t *)&tempRead;
-
-    return (float)(tempThreshReg >> 1); // degrees C
+    // sift to start at bit 0, return the temperature threshold code value
+    return tempRead >> 1;
 }
 
 /// @brief Returns the enable bit that determines the data
@@ -1548,7 +1514,8 @@ uint8_t TMAG5273::getTemperatureEN()
     if (_theI2CBus.readRegister(TMAG5273_REG_T_CONFIG, tempENreg) != ksfTkErrOk)
         return 0;
 
-    return bitRead(tempENreg, 0);
+    tempENreg &= ~TMAG5273_TEMPERATURE_BITS;
+    return tempENreg >> TMAG5273_TEMPERATURE_LSB;
 }
 
 /// @brief Returns the enable interrupt response bit on conversion
@@ -1558,7 +1525,7 @@ uint8_t TMAG5273::getTemperatureEN()
 ///     0X1 = Interrupt is asserted when the configured set of
 ///           conversions are complete
 ///     TMAG5273_REG_INT_CONFIG_1 - bit 7
-/// @return Interrupt responce bit for conversion complete.
+/// @return Interrupt response bit for conversion complete.
 uint8_t TMAG5273::getInterruptResult()
 {
     uint8_t intRsltReg = 0;
@@ -1566,7 +1533,8 @@ uint8_t TMAG5273::getInterruptResult()
     if (_theI2CBus.readRegister(TMAG5273_REG_INT_CONFIG_1, intRsltReg) != ksfTkErrOk)
         return 0;
 
-    return bitRead(intRsltReg, 7);
+    intRsltReg &= ~TMAG5273_INTERRUPT_RESULT_BITS;
+    return intRsltReg >> TMAG5273_INTERRUPT_RESULT_LSB;
 }
 
 /// @brief Returns the bit that enables the interrupt response
@@ -1582,10 +1550,11 @@ uint8_t TMAG5273::getThresholdEn()
     if (_theI2CBus.readRegister(TMAG5273_REG_INT_CONFIG_1, threshReg) != ksfTkErrOk)
         return 0;
 
-    return bitRead(threshReg, 6);
+    threshReg &= ~TMAG5273_INTERRUPT_THRESHOLD_BITS;
+    return threshReg >> TMAG5273_INTERRUPT_THRESHOLD_LSB;
 }
 
-/// @brief Returns the !INT interrupt if it is latched or pusled.
+/// @brief Returns the !INT interrupt if it is latched or pulsed.
 ///     0X0 = !INT interrupt latched until clear by a primary
 ///           addressing the device
 ///     0X1 = !INT interrupt pulse for 10us
@@ -1598,7 +1567,8 @@ uint8_t TMAG5273::getIntPinState()
     if (_theI2CBus.readRegister(TMAG5273_REG_INT_CONFIG_1, intStateReg) != ksfTkErrOk)
         return 0;
 
-    return bitRead(intStateReg, 5);
+    intStateReg &= ~TMAG5273_INTERRUPT_PIN_STATE_BITS;
+    return intStateReg >> TMAG5273_INTERRUPT_PIN_STATE_LSB;
 }
 
 /// @brief Returns the configuration for the interrupt mode select
@@ -1615,40 +1585,8 @@ uint8_t TMAG5273::getInterruptMode()
     if (_theI2CBus.readRegister(TMAG5273_REG_INT_CONFIG_1, intModeReg) != ksfTkErrOk)
         return 0;
 
-    uint8_t intCon2 = bitRead(intModeReg, 2);
-    uint8_t intCon3 = bitRead(intModeReg, 3);
-    uint8_t intCon4 = bitRead(intModeReg, 4);
-
-    if ((intCon2 == 0) && (intCon3 == 0) && (intCon4 == 0)) // 0b000
-    {
-        // no interrupt
-        return 0;
-    }
-    else if ((intCon2 == 1) && (intCon3 == 0) && (intCon4 == 0)) // 0b001
-    {
-        // interrupt through !INT
-        return 1;
-    }
-    else if ((intCon2 == 0) && (intCon3 == 1) && (intCon4 == 0)) // 0b010
-    {
-        // Interrupt through !INT except when I2C is busy
-        return 2;
-    }
-    else if ((intCon2 == 1) && (intCon3 == 1) && (intCon4 == 0)) // 0b011
-    {
-        // Interrupt through SCL
-        return 3;
-    }
-    else if ((intCon2 == 0) && (intCon3 == 0) && (intCon4 == 1)) // 0b100
-    {
-        // Interrupt through SCL except when I2C is busy
-        return 4;
-    }
-    else
-    {
-        // default
-        return 0;
-    }
+    intModeReg &= ~TMAG5273_INTERRUPT_MODE_BITS;
+    return intModeReg >> TMAG5273_INTERRUPT_MODE_LSB;
 }
 
 /// @brief Returns the Mask !INT pin when !INT is connected to GND
@@ -1662,7 +1600,8 @@ uint8_t TMAG5273::getMaskInt()
     if (_theI2CBus.readRegister(TMAG5273_REG_INT_CONFIG_1, maskIntReg) != ksfTkErrOk)
         return 0;
 
-    return bitRead(maskIntReg, 0);
+    maskIntReg &= ~TMAG5273_I2C_ADDRESS_CHANGE_BITS;
+    return maskIntReg >> TMAG5273_I2C_ADDRESS_CHANGE_LSB;
 }
 
 /// @brief Returns the rolling count of conversion data sets
@@ -1674,7 +1613,8 @@ uint8_t TMAG5273::getSetCount()
     if (_theI2CBus.readRegister(TMAG5273_REG_CONV_STATUS, convReg) != ksfTkErrOk)
         return 0;
 
-    return convReg >> 5;
+    convReg &= ~TMAG5273_CONV_STATUS_SET_COUNT_BITS;
+    return convReg >> TMAG5273_CONV_STATUS_SET_COUNT_LSB;
 }
 
 /// @brief Returns if the device is powered up, or experienced power-
@@ -1689,7 +1629,8 @@ uint8_t TMAG5273::getPOR()
     if (_theI2CBus.readRegister(TMAG5273_REG_CONV_STATUS, convReg) != ksfTkErrOk)
         return 0;
 
-    return bitRead(convReg, 4);
+    convReg &= ~TMAG5273_CONV_STATUS_POR_BITS;
+    return convReg >> TMAG5273_CONV_STATUS_POR_LSB;
 }
 
 /// @brief Returns if there was a detection of any internal
@@ -1706,13 +1647,15 @@ uint8_t TMAG5273::getDiagStatus()
     if (_theI2CBus.readRegister(TMAG5273_REG_CONV_STATUS, convReg) != ksfTkErrOk)
         return 0;
 
+    convReg &= ~TMAG5273_CONV_STATUS_DIAG_STATUS_BITS;
+    return convReg >> TMAG5273_CONV_STATUS_DIAG_STATUS_LSB;
     return bitRead(convReg, 1);
 }
 
 /// @brief Returns if the conversion data buffer is ready
 ///  to be read.
 ///     0X0 = Conversion data not complete
-///     0X1 = Converstion data complete
+///     0X1 = Conversion data complete
 ///     TMAG5273_REG_CONV_STATUS - bit 0
 /// @return Conversion data buffer status
 uint8_t TMAG5273::getResultStatus()
@@ -1721,7 +1664,8 @@ uint8_t TMAG5273::getResultStatus()
     if (_theI2CBus.readRegister(TMAG5273_REG_CONV_STATUS, convReg) != ksfTkErrOk)
         return 0;
 
-    return bitRead(convReg, 0);
+    convReg &= ~TMAG5273_CONV_STATUS_RESULT_STATUS_BITS;
+    return convReg >> TMAG5273_CONV_STATUS_RESULT_STATUS_LSB;
 }
 
 /// @brief Returns the I2C address of the device. There is a 7-bit
@@ -1737,7 +1681,8 @@ uint8_t TMAG5273::getI2CAddress()
     if (_theI2CBus.readRegister(TMAG5273_REG_I2C_ADDRESS, addressReg) != ksfTkErrOk)
         return 0;
 
-    return addressReg >> 1; // Shift off the last bit to return the first 7
+    addressReg &= ~TMAG5273_I2C_ADDRESS_BITS;
+    return addressReg >> TMAG5273_I2C_ADDRESS_LSB;
 }
 
 /// @brief Returns the device version indicator. The reset value of the
@@ -1754,22 +1699,8 @@ uint8_t TMAG5273::getDeviceID()
     if (_theI2CBus.readRegister(TMAG5273_REG_DEVICE_ID, deviceReg) != ksfTkErrOk)
         return 0;
 
-    uint8_t reg1 = bitRead(deviceReg, 0);
-    uint8_t reg2 = bitRead(deviceReg, 1);
-
-    if ((reg1 == 1) && (reg2 == 0))
-    {
-        return 0;
-    }
-    else if ((reg1 == 0) && (reg2 == 1))
-    {
-        return 1;
-    }
-    else
-    {
-        // returns an error
-        return -1;
-    }
+    deviceReg &= ~TMAG5273_DEVICE_ID_BITS;
+    return deviceReg >> TMAG5273_DEVICE_ID_LSB;
 }
 
 /// @brief Returns the 8-Bit Manufacturer ID. There are two
@@ -1779,19 +1710,18 @@ uint8_t TMAG5273::getDeviceID()
 /// @return 16-Bit Manufacturer ID
 uint16_t TMAG5273::getManufacturerID()
 {
-    uint16_t deviceIDReg = 0;
     uint8_t databuffer[2];
     size_t nRead;
 
+    // Read both the LSB and MSB in one read. Results [LSB, MSB]
     if (_theI2CBus.readRegister(TMAG5273_REG_MANUFACTURER_ID_LSB, databuffer, 2, nRead) != ksfTkErrOk)
         return 0;
 
-    deviceIDReg = (databuffer[1] << 8) | (databuffer[0]);
-
-    return deviceIDReg;
+    // make a short word out of the two bytes
+    return (databuffer[1] << 8) | (databuffer[0]);
 }
 
-/// @brief This function iundicates the level that the device is
+/// @brief This function indicates the level that the device is
 ///  reading back from the !INT pin. The reset value of DEVICE_STATUS
 /// depends on the status of the !INT pin at power-up.
 /// @return Returns the following:
@@ -1804,8 +1734,8 @@ uint8_t TMAG5273::getInterruptPinStatus()
     if (_theI2CBus.readRegister(TMAG5273_REG_DEVICE_STATUS, deviceStatusReg) != ksfTkErrOk)
         return 0;
 
-    // Reads back the bit we want to investigate
-    return bitRead(deviceStatusReg, 4);
+    deviceStatusReg &= ~TMAG5273_DEVICE_STATUS_INTR_RB_BITS;
+    return deviceStatusReg >> TMAG5273_DEVICE_STATUS_INTR_RB_LSB;
 }
 
 /// @brief This function returns the device status register as its

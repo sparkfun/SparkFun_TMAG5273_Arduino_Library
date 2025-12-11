@@ -95,10 +95,10 @@ class TMAG5273
     uint8_t getAngleEn();                // Returns the angle calculation and associated channel order
     uint8_t getXYAxisRange();            // Returns the X and Y axes magnetic range
     uint8_t getZAxisRange();             // Returns the Z axis magnetic range
-    float getXThreshold();               // Returns the X axis threshold code for limit check
-    float getYThreshold();               // Returns the Y axis threshold code for limit check
-    float getZThreshold();               // Returns the Z axis threshold code for limit check
-    float getTemperatureThreshold();     // Returns the temperature threshold code entered by the user
+    int8_t getXThreshold();              // Returns the X axis threshold code for limit check
+    int8_t getYThreshold();              // Returns the Y axis threshold code for limit check
+    int8_t getZThreshold();              // Returns the Z axis threshold code for limit check
+    uint8_t getTemperatureThreshold();   // Returns the temperature threshold code entered by the user
     uint8_t getTemperatureEN();          // Returns the enable bit to determine if temp channel is on or off
     uint8_t getInterruptResult();        // Returns the enable interrupt response bit on conversion complete.
     uint8_t getThresholdEn();            // Returns the bit that enables the interrupt

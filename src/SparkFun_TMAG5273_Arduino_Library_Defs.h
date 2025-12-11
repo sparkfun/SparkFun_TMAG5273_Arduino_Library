@@ -86,7 +86,7 @@ Features as per datasheet
 #define TMAG5273_OPERATING_MODE_LSB 0
 #define TMAG5273_STANDY_BY_MODE 0x0          // Stand-by mode
 #define TMAG5273_SLEEP_MODE 0x1              // Sleep mode
-#define TMAG5273_CONTINUOUS_MEASURE_MODE 0x2 // Continous measure mode
+#define TMAG5273_CONTINUOUS_MEASURE_MODE 0x2 // Continuous measure mode
 #define TMAG5273_WAKE_UP_AND_SLEEP_MODE 0x3  // Wake-up and sleep mode
 
 // Sensor Channel Modes
@@ -164,7 +164,7 @@ Features as per datasheet
 #define TMAG5273_INTERRUPT_THRESHOLD_BITS 0x40 // Bit 6
 #define TMAG5273_INTERRUPT_THRESHOLD_LSB 6
 
-#define TMAG5273_INTERRUPT_NOT_ASSERTED 0x0 // Interrupt is not asserved when set
+#define TMAG5273_INTERRUPT_NOT_ASSERTED 0x0 // Interrupt is not asserted when set
 #define TMAG5273_INTERRUPT_ASSERTED 0x1     // Interrupt is asserted
 
 #define TMAG5273_INTERRUPT_PIN_STATE_BITS 0x20 // Bit 5
@@ -186,6 +186,9 @@ Features as per datasheet
 #define TMAG5273_INT_PIN_ENABLE 0x0  // INT pin is enabled
 #define TMAG5273_INT_PIN_DISABLE 0x1 // INT pin is disabled (for wake-up and trigger functions)
 
+#define TMAG5273_I2C_ADDRESS_BITS 0xFE // Bits 7-1
+#define TMAG5273_I2C_ADDRESS_LSB 1
+
 #define TMAG5273_I2C_ADDRESS_CHANGE_BITS 0x00 // Bit 0
 #define TMAG5273_I2C_ADDRESS_CHANGE_LSB 0
 #define TMAG5273_I2C_ADDRESS_CHANGE_DISABLE 0x0 // Disable update of I2C address
@@ -201,6 +204,24 @@ Features as per datasheet
 
 #define TMAG5273_INT_ERROR_UNDETECTED 0x0 // No INT error detected
 #define TMAG5273_INT_ERROR_DETECTED 0x1   // INT error detected
+
+#define TMAG5273_CONV_STATUS_SET_COUNT_BITS 0xE0 // Bits 7-5
+#define TMAG5273_CONV_STATUS_SET_COUNT_LSB 5
+
+#define TMAG5273_CONV_STATUS_POR_BITS 0x10 // Bit 4
+#define TMAG5273_CONV_STATUS_POR_LSB 4
+
+#define TMAG5273_CONV_STATUS_DIAG_STATUS_BITS 0x02 // Bit 1
+#define TMAG5273_CONV_STATUS_DIAG_STATUS_LSB 1
+
+#define TMAG5273_CONV_STATUS_RESULT_STATUS_BITS 0x01 // Bit 0
+#define TMAG5273_CONV_STATUS_RESULT_STATUS_LSB 0
+
+#define TMAG5273_DEVICE_ID_BITS 0x03 // Bits 1-0
+#define TMAG5273_DEVICE_ID_LSB 0
+
+#define TMAG5273_DEVICE_STATUS_INTR_RB_BITS 0x10 // Bit 4
+#define TMAG5273_DEVICE_STATUS_INTR_RB_LSB 4
 
 /********************************** Register Definitions **********************************/
 
