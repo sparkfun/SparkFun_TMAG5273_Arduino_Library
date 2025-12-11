@@ -574,9 +574,9 @@ int8_t TMAG5273::setMagneticGain(uint8_t magneticGain)
 ///  range of possible offset valid entrees can be +/-128. The offset value
 ///  is calculated by multiplying bit resolution with the entered value.
 ///     TMAG5273_REG_MAG_OFFSET_CONFIG_1
-/// @param offset1 Value within the range +/-128
+/// @param offset1 Value within the range +/-128 in mT
 /// @return Error code (0 is success, negative is failure, positive is warning)
-int8_t TMAG5273::setMagneticOffset1(float offset1)
+int8_t TMAG5273::setMagneticOffset1(int8_t offset1)
 {
     if (offset1 < -128.f || offset1 > 128.f)
         return -1; // invalid offset1
@@ -584,8 +584,15 @@ int8_t TMAG5273::setMagneticOffset1(float offset1)
     uint8_t rangeValXY = getXYAxisRange();
     float range = rangeValXY == 0 ? 40.f : 80.f;
 
-    // Multiply bit resolution with entered value from datasheet
-    int8_t magOffset = (int8_t)((2048.f * offset1) / range); // 2048 = 2^12
+    // From the datasheet, equation to calculate offset value (17)
+    //
+    // OFFSET_REG = (2^12 * OFFSET_mT) / 2*|RANGE_mT|
+    // Where RANGE_mT is the full scale range of the selected axis
+    // OFFSET_mT is the desired offset in mT - passed to this method
+    //
+    // factoring out the 2 in the denominator gives us:
+    // OFFSET_REG = (2^11 * OFFSET_mT) / |RANGE_mT|
+    int8_t magOffset = (int8_t)((2048.f * (float)offset1) / range); // 2048 = 2^11
 
     // deal with int/uint conversion
     uint8_t tempWrite = *(uint8_t *)&magOffset;
@@ -602,7 +609,7 @@ int8_t TMAG5273::setMagneticOffset1(float offset1)
 ///     TMAG5273_REG_MAG_OFFSET_CONFIG_2
 /// @param offset2 Value within the range +/-128
 /// @return Error code (0 is success, negative is failure, positive is warning)
-int8_t TMAG5273::setMagneticOffset2(float offset2)
+int8_t TMAG5273::setMagneticOffset2(int8_t offset2)
 {
     if (offset2 < -128.f || offset2 > 128.f)
         return -1; // invalid offset2
@@ -613,15 +620,22 @@ int8_t TMAG5273::setMagneticOffset2(float offset2)
         return -1; // invalid channel selection
 
     // See which XY axis range is currently set
-    float rangeXY = getXYAxisRange() == 0 ? 40.f : 80.f;
 
-    // See which Z axis range is currently set
-    float rangeZ = getZAxisRange() == 0 ? 40.f : 80.f;
+    float range;
+    if (channelSelect == 1)
+        range = getXYAxisRange() == 0 ? 40.f : 80.f;
+    else
+        range = getZAxisRange() == 0 ? 40.f : 80.f;
 
-    float range = channelSelect == 1 ? rangeXY : rangeZ;
-
-    // Multiply bit resolution with entered value
-    int8_t magOffset = (int8_t)((2048.f * offset2) / range); // 2048 = 2^12
+    // From the datasheet, equation to calculate offset value (17)
+    //
+    // OFFSET_REG = (2^12 * OFFSET_mT) / 2*|RANGE_mT|
+    // Where RANGE_mT is the full scale range of the selected axis
+    // OFFSET_mT is the desired offset in mT - passed to this method
+    //
+    // factoring out the 2 in the denominator gives us:
+    // OFFSET_REG = (2^11 * OFFSET_mT) / |RANGE_mT|
+    int8_t magOffset = (int8_t)((2048.f * (float)offset2) / range); // 2048 = 2^11
 
     // deal with int/uint conversion
     uint8_t tempWrite = *(uint8_t *)&magOffset;
@@ -1302,22 +1316,23 @@ int8_t TMAG5273::getMagneticOffset1()
     if (_theI2CBus.readRegister(TMAG5273_REG_MAG_OFFSET_CONFIG_1, tmpRead) != ksfTkErrOk)
         return 0;
     int8_t magOffset1 = *(int8_t *)&tmpRead;
-    // KDB 12/25
-    // rangeVal is always 0, so range is always 40? Not sure the logic here, but
-    // leaving it for now -- can re-visit later if needed
-    uint8_t rangeVal = 0;
-    uint8_t range = 0;
-    if (rangeVal == 0)
-    {
-        range = 40;
-    }
-    else
-    {
-        range = 80;
-    }
 
-    // Divide by resoltuion (2^12 = 2048)
-    return (int8_t)((magOffset1 * range) / 2048);
+    // To calculate the offset register value from the desired offset in mT,
+    // use the following equation from the datasheet:
+    //   OFFSET_REG = (2^12 * OFFSET_mT) / 2*|RANGE_mT|
+    // Where RANGE_mT is the full scale range of the selected axis
+    // OFFSET_mT is the desired offset in mT - passed to this method
+    //
+    // factoring out the 2 in the denominator gives us:
+    // OFFSET_REG = (2^11 * OFFSET_mT) / |RANGE_mT|
+    //
+    // Now to determine offset_mfT from OFFSET_REG, we rearrange to:
+    //    OFFSET_mT = (OFFSET_REG * |RANGE_mT|) / 2^11
+
+    uint8_t rangeValXY = getXYAxisRange();
+    float range = rangeValXY == 0 ? 40.f : 80.f;
+
+    return (int8_t)((magOffset1 * range) / 2048.f); // 2^11 = 2048
 }
 
 /// @brief This function will return an 8-bit, 2's complement offset value
@@ -1335,56 +1350,38 @@ int8_t TMAG5273::getMagneticOffset2()
         return 0;
 
     int magOffset2 = *(int8_t *)&tempRead;
-    // Choose the XY axis range
+
+    // Determine whether the magnetic offset channel is Y or Z for the range selection
     uint8_t channelSelect = getAngleEn(); // 1, 2, or 3
-    uint8_t rangeValXY = getXYAxisRange();
-    uint8_t rangeXY = 0;
-    if (rangeValXY == 0)
-    {
-        rangeXY = 40;
-    }
-    else if (rangeValXY == 1)
-    {
-        rangeXY = 80;
-    }
+    if (channelSelect < 1 || channelSelect > 3)
+        return -1; // invalid channel selection
 
-    // Choose the Z axis range
-    uint8_t rangeValZ = getZAxisRange();
-    uint8_t rangeZ = 0;
-    if (rangeValZ == 0)
-    {
-        rangeZ = 40;
-    }
-    else if (rangeValZ == 1)
-    {
-        rangeZ = 80;
-    }
+    // See which XY axis range is currently set
 
-    // Range value for caluclation
-    uint8_t range;
-
-    // Select Channel
-    if (channelSelect == 1) // Y
-    {
-        range = rangeXY; // 40 or 80
-    }
-    else if (channelSelect == 2) // Z
-    {
-        range = rangeZ; // 40 or 80
-    }
-    else if (channelSelect == 3) // Z
-    {
-        range = rangeZ; // 40 or 80
-    }
+    float range;
+    if (channelSelect == 1)
+        range = getXYAxisRange() == 0 ? 40.f : 80.f;
     else
-    {
-        return -1; // Returns error
-        // Error could also be the ranges being disabled
-    }
+        range = getZAxisRange() == 0 ? 40.f : 80.f;
+
+    // To calculate the offset register value from the desired offset in mT,
+    // use the following equation from the datasheet:
+    //   OFFSET_REG = (2^12 * OFFSET_mT) / 2*|RANGE_mT|
+    // Where RANGE_mT is the full scale range of the selected axis
+    // OFFSET_mT is the desired offset in mT - passed to this method
+    //
+    // factoring out the 2 in the denominator gives us:
+    // OFFSET_REG = (2^11 * OFFSET_mT) / |RANGE_mT|
+    //
+    // Now to determine offset_mfT from OFFSET_REG, we rearrange to:
+    //    OFFSET_mT = (OFFSET_REG * |RANGE_mT|) / 2^11
 
     // Use resolution equation in datasheet
-    return (int8_t)((magOffset2 * range) / 2048); // 2^11 = 2048
+    return (int8_t)((magOffset2 * range) / 2048.f); // 2^11 = 2048
 }
+// KDB ************************************************************************************************/
+// STOP STOP STOP
+// KDB ************************************************************************************************/
 
 /// @brief Returns angle calculation, magnetic gain, and offset
 ///  corrections between two selected magnetic channels.

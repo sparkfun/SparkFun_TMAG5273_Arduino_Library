@@ -53,8 +53,8 @@ class TMAG5273
     int8_t setMagDir(uint8_t threshDir);            // Sets the direction of threshold check
     int8_t setMagnitudeGain(uint8_t gainAdjust);    // Sets the axis for magnitude gain correction value
     int8_t setMagneticGain(uint8_t magneticGain);   // Sets the 8-bit gain value to adjust a Hall axis gain
-    int8_t setMagneticOffset1(float offset1);       // Sets the offset value determined by a primary for the first axis
-    int8_t setMagneticOffset2(float offset2);       // Sets the offset value determined by a primary for the second axis
+    int8_t setMagneticOffset1(int8_t offset1);      // Sets the offset value determined by a primary for the first axis
+    int8_t setMagneticOffset2(int8_t offset2);      // Sets the offset value determined by a primary for the second axis
     int8_t setAngleEn(uint8_t angleEnable);         // Sets the angle caluclation, mag gain, and offset corections
     int8_t setXYAxisRange(uint8_t xyAxisRange);     // Sets the X and Y axes magnetic range from ±40mT or ±80mT
     int8_t setZAxisRange(uint8_t zAxisRange);       // Sets the Z axis magnetic range from ±40mT or ±80mT
