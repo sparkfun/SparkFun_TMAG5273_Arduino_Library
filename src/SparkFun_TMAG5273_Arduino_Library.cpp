@@ -26,6 +26,7 @@ TMAG5273::TMAG5273()
     /* Nothing to do */
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Begin communication with the TMAG over I2C, initialize it, and
 /// and set the wire for the I2C communication
 /// @param sensorAddress I2C address of the sensor
@@ -64,30 +65,22 @@ int8_t TMAG5273::begin(uint8_t sensorAddress, TwoWire &wirePort)
     if (getError() != 0)
         return 0;
 
-    // Check the low active current mode (0)
-    if (getLowPower() != TMAG5273_LOW_ACTIVE_CURRENT_MODE)
-        return 0;
-
-    // Check the operating mode to make sure it is set to continuous measure (0X2)
-    if (getOperatingMode() != TMAG5273_CONTINUOUS_MEASURE_MODE)
-        return 0;
-
-    // Check that all magnetic channels have been enables(0X7)
-    if (getMagneticChannel() != TMAG5273_X_Y_Z_ENABLE)
-        return 0;
-
-    // Check that the temperature data acquisition has been enabled
-    if (getTemperatureEN() != TMAG5273_TEMPERATURE_ENABLE)
-        return 0;
-
-    // Check that X and Y angle calculation is disabled
-    if (getAngleEn() != TMAG5273_NO_ANGLE_CALCULATION)
+    // Verify we are in a an expected configuration - if not, return error
+    //.  - low active current mode
+    //.  - continuous measure mode
+    //.  - all magnetic channels enabled
+    //.  - temperature data acquisition enabled
+    //.  - no angle calculation
+    if ((getLowPower() != TMAG5273_LOW_ACTIVE_CURRENT_MODE) ||
+        (getOperatingMode() != TMAG5273_CONTINUOUS_MEASURE_MODE) || (getMagneticChannel() != TMAG5273_X_Y_Z_ENABLE) ||
+        (getTemperatureEN() != TMAG5273_TEMPERATURE_ENABLE) || (getAngleEn() != TMAG5273_NO_ANGLE_CALCULATION))
         return 0;
 
     // returns true if all the checks pass
     return 1;
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief This function will make sure the TMAG5273 acknowledges
 ///  over I2C, along with checking the Device ID to ensure proper
 ///  connection.
@@ -104,6 +97,7 @@ int8_t TMAG5273::isConnected()
     return 0;
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Write to the correct registers the correct values to
 ///  enter wake up and sleep mode. See page 42 of the datasheet for more
 ///  information on the values chosen.
@@ -124,6 +118,7 @@ int8_t TMAG5273::setupWakeUpAndSleep()
     return getError();
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Read the 16-bit magnetic reading for the X, Y, Z and temperature
 ///  data during the wakeup and sleep mode
 /// @param xVal 16-bit value for the X magnetic reading
@@ -133,7 +128,7 @@ int8_t TMAG5273::setupWakeUpAndSleep()
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::readWakeUpAndSleepData(float &xVal, float &yVal, float &zVal, float &temperature)
 {
-
+    // just get the desired values
     xVal = getXData();
     yVal = getYData();
     zVal = getZData();
@@ -146,6 +141,7 @@ int8_t TMAG5273::readWakeUpAndSleepData(float &xVal, float &yVal, float &zVal, f
 /**************************        SET CONFIGURATION SETTINGS         ***************************/
 /************************************************************************************************/
 
+//------------------------------------------------------------------------------------------------
 /// @brief Sets the I2C CRC byte to be sent
 /// @param crcMode 0b0-0b1
 /// 0X0 = CRC disabled
@@ -154,7 +150,6 @@ int8_t TMAG5273::readWakeUpAndSleepData(float &xVal, float &yVal, float &zVal, f
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setCRCMode(uint8_t crcMode)
 {
-
     if (crcMode > TMAG5273_CRC_ENABLE) // only 0x0 and 0x1 are valid
         return -1;                     // invalid crcMode
 
@@ -172,6 +167,7 @@ int8_t TMAG5273::setCRCMode(uint8_t crcMode)
     return getError();
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Sets the temperature coefficient of the magnet
 /// @param magTempMode value to set the temp coefficient of the device
 ///     0x0 = 0% (No temperature compensation)
@@ -185,7 +181,7 @@ int8_t TMAG5273::setMagTemp(uint8_t magTempMode)
     if (magTempMode > TMAG5273_MAG_TEMP_0P2PCT ||
         magTempMode == TMAG5273_MAG_TEMP_RESERVED) // only 0x0 to 0x3 are valid
         return -1;
-    // invalid magTempMode
+
     uint8_t mode = 0;
     sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_DEVICE_CONFIG_1, mode);
     if (rc != ksfTkErrOk)
@@ -200,6 +196,7 @@ int8_t TMAG5273::setMagTemp(uint8_t magTempMode)
     return getError();
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Sets the additional sampling of the sensor data to reduce the
 /// noise effect (or to increase resolution)
 /// @param avgMode value to set the conversion average
@@ -231,6 +228,7 @@ int8_t TMAG5273::setConvAvg(uint8_t avgMode)
     return getError();
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Defines the I2C read mode of the device
 /// @param readMode Value to set the read mode
 ///     0X0 = Standard I2C 3-byte read command
@@ -260,6 +258,7 @@ int8_t TMAG5273::setReadMode(uint8_t readMode)
     return getError();
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Sets the threshold for the interrupt function
 /// @param threshold Value to set the threshold
 ///     0X0 = Takes the 2's complement value of each x_THR_CONFIG
@@ -290,6 +289,7 @@ int8_t TMAG5273::setIntThreshold(uint8_t threshold)
     return getError();
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Sets the device to low power or low noise mode
 /// @param lpLnMode Value to set the mode
 ///    0X0 = Low active current mode
@@ -316,6 +316,7 @@ int8_t TMAG5273::setLowPower(uint8_t lpLnMode)
     return getError();
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Sets the I2C glitch filter on and off
 /// @param glitchMode value to set the mode
 ///     0x0 = Glitch filter ON
@@ -342,6 +343,7 @@ int8_t TMAG5273::setGlitchFilter(uint8_t glitchMode)
     return getError();
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Sets a condition which initiates a single conversion based off
 ///  already configured registers. A running conversion completes before
 ///  executing a trigger. Redundant triggers are ignored. TRIGGER_MODE
@@ -371,6 +373,7 @@ int8_t TMAG5273::setTriggerMode(uint8_t trigMode)
     return getError();
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Sets the operating mode from one of the 4 modes:
 ///  stand-by mode, sleep mode, continuous measure mode, and
 ///  wake-up and sleep mode.
@@ -401,6 +404,7 @@ int8_t TMAG5273::setOperatingMode(uint8_t opMode)
     return getError();
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Sets the data acquisition from the following magnetic
 ///  axis channels listed below
 /// @param channelMode Value that sets the channel for data acquisition
@@ -440,6 +444,7 @@ int8_t TMAG5273::setMagneticChannel(uint8_t channelMode)
     return getError();
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Sets the time spent in low power mode between conversions
 ///  when OPERATING_MODE = 11b.
 /// @param sleepTime Value to set the time desired
@@ -480,6 +485,7 @@ int8_t TMAG5273::setSleeptime(uint8_t sleepTime)
     return getError();
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Sets the direction of threshold check. This bit
 ///  is ignored when THR_HYST > 001b
 /// @param threshDir value to set the direction of threshold
@@ -507,6 +513,7 @@ int8_t TMAG5273::setMagDir(uint8_t threshDir)
     return getError();
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Sets the axis for magnitude gain correction valued
 /// entered in MAG_GAIN_CONFIG register
 /// @param gainAdjust Value to set the gain correction value
@@ -518,7 +525,7 @@ int8_t TMAG5273::setMagnitudeGain(uint8_t gainAdjust)
 {
     if (gainAdjust > TMAG5273_GAIN_ADJUST_CHANNEL_2) // only 0x0 and 0x1 are valid
         return -1;
-    // invalid threshDir
+
     uint8_t mode = 0;
     sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_SENSOR_CONFIG_2, mode);
     if (rc != ksfTkErrOk)
@@ -534,6 +541,7 @@ int8_t TMAG5273::setMagnitudeGain(uint8_t gainAdjust)
     return getError();
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief This function sets an 8-bit gain value determined by a
 ///  primary to adjust a Hall axis gain. The particular axis is selected
 ///  based off the settings of MAG_GAIN_CH and ANGLE_EN register bits.
@@ -545,9 +553,7 @@ int8_t TMAG5273::setMagnitudeGain(uint8_t gainAdjust)
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setMagneticGain(uint8_t magneticGain)
 {
-
     // Convert magneticGain to be the correct value to write to their register
-
     // get our fractional value between 0 and 1
     float fMagGain = (float)magneticGain / 256.f;
     uint32_t iMagGain = 0;
@@ -564,6 +570,7 @@ int8_t TMAG5273::setMagneticGain(uint8_t magneticGain)
     return getError();
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief This function will write an 8-bit, 2's complement offset value
 ///  determined by a primary to adjust the first axis offset value. The
 ///  range of possible offset valid entrees can be +/-128. The offset value
@@ -597,6 +604,7 @@ int8_t TMAG5273::setMagneticOffset1(int8_t offset1)
     return getError();
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief This function will write an 8-bit, 2's complement offset value
 ///  determined by a primary to adjust the first axis offset value. The
 ///  range of possible offset valid entrees can be +/-128. The offset value
@@ -615,7 +623,6 @@ int8_t TMAG5273::setMagneticOffset2(int8_t offset2)
         return -1; // invalid channel selection
 
     // See which XY axis range is currently set
-
     float range;
     if (channelSelect == 1)
         range = getXYAxisRange() == 0 ? 40.f : 80.f;
@@ -642,6 +649,7 @@ int8_t TMAG5273::setMagneticOffset2(int8_t offset2)
     return getError();
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Sets the angle calculation, magnetic gain, and offset corrections
 ///  between two selected magnetic channels
 /// @param angleEnable value to write to the register for which angle calculation enabled
@@ -672,6 +680,7 @@ int8_t TMAG5273::setAngleEn(uint8_t angleEnable)
     return getError();
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Sets the X and Y axes magnetic range from 2 different options
 /// @param xyAxisRange Value to choose the magnetic range
 ///     0X0 = ±40mT, DEFAULT
@@ -698,6 +707,7 @@ int8_t TMAG5273::setXYAxisRange(uint8_t xyAxisRange)
     return getError();
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Sets the Z magnetic range from 2 different options
 /// @param zAxisRange Value to set the range from either 40mT or 80mT
 ///     0X0 = ±40mT, DEFAULT
@@ -724,6 +734,7 @@ int8_t TMAG5273::setZAxisRange(uint8_t zAxisRange)
     return getError();
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Sets an 8-bit, 2's complement X axis threshold code for limit
 ///  check. The range of possible threshold entrees can be +/-128. The
 ///  threshold value in mT is calculated as (40(1+X_Y_RANGE)/128)*X_THR_CONFIG,
@@ -743,6 +754,7 @@ int8_t TMAG5273::setXThreshold(int8_t xThreshold)
     return getError();
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Sets an 8-bit, 2's complement Y axis threshold code for limit
 ///  check. The range of possible threshold entrees can be +/-128. The
 ///  threshold value in mT is calculated as (40(1+X_Y_RANGE)/128)*Y_THR_CONFIG,
@@ -762,6 +774,7 @@ int8_t TMAG5273::setYThreshold(int8_t yThreshold)
     return getError();
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Sets an 8-bit, 2's complement Z axis threshold code for limit
 ///  check. The range of possible threshold entrees can be +/-128. The
 ///  threshold value in mT is calculated as (40(1+Z_RANGE)/128)*Z_THR_CONFIG,
@@ -782,6 +795,7 @@ int8_t TMAG5273::setZThreshold(int8_t zThreshold)
     return getError();
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Sets the temperature threshold code entered by the user. The
 ///  valid temperature threshold ranges are -41C to 170C with the threshold codes
 ///  for -41C = 1Ah, and 170C = 34h. Resolution is 8 degree C/ LSB
@@ -792,7 +806,7 @@ int8_t TMAG5273::setZThreshold(int8_t zThreshold)
 int8_t TMAG5273::setTemperatureThreshold(int8_t tempThresh)
 {
     // Write the new address into the register and enable the temperature to be read
-    // NOTE: Temperature is NOT set -- this is not part of this function
+    // NOTE: Temperature enable is NOT set -- this is not part of this function
     uint8_t tmp = (tempThresh << 1);
     if (_theI2CBus.writeRegister(TMAG5273_REG_T_CONFIG, tmp) != ksfTkErrOk)
         return -1;
@@ -800,6 +814,7 @@ int8_t TMAG5273::setTemperatureThreshold(int8_t tempThresh)
     return getError();
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Sets the enable bit that determines the data acquisition of the
 ///  temperature channel.
 /// @param temperatureEnable Value to determine enable or disable
@@ -824,6 +839,7 @@ int8_t TMAG5273::setTemperatureEn(bool temperatureEnable)
     return getError();
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Sets the enable interrupt response bit on conversion complete.
 /// @param interruptEnable Value to determine if interrupt is or is not asserted
 ///     0X0 = Interrupt is NOT asserted when the configured set of
@@ -850,6 +866,7 @@ int8_t TMAG5273::setInterruptResult(bool interruptEnable)
     return getError();
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Configures the bit that enables interrupt response on a
 ///   predefined threshold cross.
 /// @param enableInterruptResponse Value to determine if interrupt is or is not asserted
@@ -875,6 +892,7 @@ int8_t TMAG5273::setThresholdEn(bool enableInterruptResponse)
     return getError();
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Enables the !INT interrupt if it is latched or pulsed.
 /// @param interruptState Value to determine the interrupt state
 ///     0X0 = !INT interrupt latched until clear by a primary
@@ -900,6 +918,7 @@ int8_t TMAG5273::setIntPinState(bool interruptState)
     return getError();
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Configures the interrupt mode select
 /// @param config_mode Value to determine the int select
 ///     0X0 = No interrupt
@@ -929,6 +948,7 @@ int8_t TMAG5273::setInterruptMode(uint8_t configurationMode)
     return getError();
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Configures the Mask !INT pin when !INT is connected to GND
 /// @param interruptPinEnable Value to choose the INT enable or disable
 ///     0X0 = !INT pin is enabled
@@ -953,6 +973,7 @@ int8_t TMAG5273::setMaskInterrupt(bool interruptPinEnable)
     return getError();
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief This register is loaded with the default I2C address
 ///  from OTP during first power up. Change these bits to a
 ///  new setting if a new I2C address is required (at each
@@ -976,6 +997,7 @@ int8_t TMAG5273::setI2CAddress(uint8_t address)
     return getError();
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Writes to the I2C_ADDRESS_UPDATE_EN bit to enable
 ///  a new user defined I2C address.
 /// @param addressEnable Value to determine if the user can write a new address.
@@ -999,6 +1021,7 @@ int8_t TMAG5273::setI2CAddressEN(bool addressEnable)
     return getError();
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief This function clears the oscillator error flag
 ///  when it is raised high by an error.
 /// @param oscError Write '1' to clear the error flag
@@ -1008,9 +1031,7 @@ int8_t TMAG5273::setI2CAddressEN(bool addressEnable)
 /// @return Error code (0 is success, negative is failure, positive is warning)
 int8_t TMAG5273::setOscillatorError(bool oscError)
 {
-
     uint8_t deviceStatusReg = 0;
-
     sfTkError_t rc = _theI2CBus.readRegister(TMAG5273_REG_DEVICE_STATUS, deviceStatusReg);
     if (rc != ksfTkErrOk)
         return -1;
@@ -1030,6 +1051,7 @@ int8_t TMAG5273::setOscillatorError(bool oscError)
 /**************************        GET CONFIGURATION SETTINGS         ***************************/
 /************************************************************************************************/
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns the I2C CRC byte to be sent
 ///     0X0 = CRC disabled
 ///     0X1 = CRC enabled
@@ -1044,6 +1066,7 @@ uint8_t TMAG5273::getCRCMode()
     return getBitFieldValue(getCRC, TMAG5273_CRC_MODE_BITS, TMAG5273_CRC_MODE_LSB);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns the temp coefficient of the magnet
 ///     0X0 = 0% (No temperature compensation)
 ///     0X1 = 0.12%/deg C (NdBFe)
@@ -1054,7 +1077,6 @@ uint8_t TMAG5273::getCRCMode()
 uint8_t TMAG5273::getMagTemp()
 {
     uint8_t magTemp = 0;
-
     if (_theI2CBus.readRegister(TMAG5273_REG_DEVICE_CONFIG_1, magTemp) != ksfTkErrOk)
         return 1;
 
@@ -1062,6 +1084,7 @@ uint8_t TMAG5273::getMagTemp()
     return getBitFieldValue(magTemp, TMAG5273_MAG_TEMP_BITS, TMAG5273_MAG_TEMP_LSB);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns the sampling of the sensor data to reduce
 ///  the noise effect (or to increase resolution)
 ///     0X0 = 1x average, 10.0-kSPS (3-axes) or 20-kSPS (1 axis)
@@ -1075,13 +1098,13 @@ uint8_t TMAG5273::getMagTemp()
 uint8_t TMAG5273::getConvAvg()
 {
     uint8_t convAv = 0;
-
     if (_theI2CBus.readRegister(TMAG5273_REG_DEVICE_CONFIG_1, convAv) != ksfTkErrOk)
         return 1;
 
     return getBitFieldValue(convAv, TMAG5273_CONV_AVG_BITS, TMAG5273_CONV_AVG_LSB);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns the I2C read mode
 ///     0X0 = Standard I2C 3-byte read command
 ///     0X1 = 1-byte I2C read command for 16bit sensor data and
@@ -1100,6 +1123,7 @@ uint8_t TMAG5273::getReadMode()
     return getBitFieldValue(readModeReg, TMAG5273_I2C_READ_MODE_BITS, TMAG5273_I2C_READ_MODE_LSB);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns the threshold for the interrupt function.
 ///     0X0 = Takes the 2's complement value of each x_THR_CONFIG
 ///      register to create a magnetic threshold of the corresponding axis
@@ -1111,13 +1135,13 @@ uint8_t TMAG5273::getReadMode()
 uint8_t TMAG5273::getIntThreshold()
 {
     uint8_t interruptThreshold = 0;
-
     if (_theI2CBus.readRegister(TMAG5273_REG_DEVICE_CONFIG_2, interruptThreshold) != ksfTkErrOk)
         return 0;
 
     return getBitFieldValue(interruptThreshold, TMAG5273_THR_HYST_BITS, TMAG5273_THR_HYST_LSB);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns if the device is operating in low power
 ///  or low noise mode.
 ///     0X0 = Low active current mode
@@ -1127,13 +1151,13 @@ uint8_t TMAG5273::getIntThreshold()
 uint8_t TMAG5273::getLowPower()
 {
     uint8_t lowPowerMode = 0;
-
     if (_theI2CBus.readRegister(TMAG5273_REG_DEVICE_CONFIG_2, lowPowerMode) != ksfTkErrOk)
         return 0;
 
     return getBitFieldValue(lowPowerMode, TMAG5273_LOW_POWER_BITS, TMAG5273_LOW_POWER_LSB);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns if the I2C glitch filter is on or off
 ///     0x0 = Glitch filter ON
 ///     0X0 = Glitch filter OFF
@@ -1142,13 +1166,13 @@ uint8_t TMAG5273::getLowPower()
 uint8_t TMAG5273::getGlitchFiler()
 {
     uint8_t glitchMode = 0;
-
     if (_theI2CBus.readRegister(TMAG5273_REG_DEVICE_CONFIG_2, glitchMode) != ksfTkErrOk)
         return 0;
 
     return getBitFieldValue(glitchMode, TMAG5273_GLITCH_FILTER_BITS, TMAG5273_GLITCH_FILTER_LSB);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns the condition which initiates a single conversion
 ///  based off already configured registers. A running conversion
 ///  completes before executing a trigger. Redundant triggers are
@@ -1161,13 +1185,13 @@ uint8_t TMAG5273::getGlitchFiler()
 uint8_t TMAG5273::getTriggerMode()
 {
     uint8_t triggerMode = 0;
-
     if (_theI2CBus.readRegister(TMAG5273_REG_DEVICE_CONFIG_2, triggerMode) != ksfTkErrOk)
         return 0;
 
     return getBitFieldValue(triggerMode, TMAG5273_TRIGGER_MODE_BITS, TMAG5273_TRIGGER_MODE_LSB);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns the operating mode from one of the 4 listed below:
 ///     0X0 = Stand-by mode (starts new conversion at trigger event)
 ///     0X1 = Sleep mode
@@ -1178,13 +1202,13 @@ uint8_t TMAG5273::getTriggerMode()
 uint8_t TMAG5273::getOperatingMode()
 {
     uint8_t opMode = 0;
-
     if (_theI2CBus.readRegister(TMAG5273_REG_DEVICE_CONFIG_2, opMode) != ksfTkErrOk)
         return 0;
 
     return getBitFieldValue(opMode, TMAG5273_OPERATING_MODE_BITS, TMAG5273_OPERATING_MODE_LSB);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns data acquisition from the following magnetic axis channels:
 ///     0X0 = All magnetic channels off, DEFAULT
 ///     0X1 = X Channel Enabled
@@ -1203,13 +1227,13 @@ uint8_t TMAG5273::getOperatingMode()
 uint8_t TMAG5273::getMagneticChannel()
 {
     uint8_t magChannel = 0;
-
     if (_theI2CBus.readRegister(TMAG5273_REG_SENSOR_CONFIG_1, magChannel) != ksfTkErrOk)
         return 0;
 
     return getBitFieldValue(magChannel, TMAG5273_CHANNEL_MODE_BITS, TMAG5273_CHANNEL_MODE_LSB);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns the time spent in low power mode between
 ///  conversions when OPERATING_MODE=11b.
 ///     0X0 = 1ms
@@ -1230,13 +1254,13 @@ uint8_t TMAG5273::getMagneticChannel()
 uint8_t TMAG5273::getSleeptime()
 {
     uint8_t sleepReg = 0;
-
     if (_theI2CBus.readRegister(TMAG5273_REG_SENSOR_CONFIG_1, sleepReg) != ksfTkErrOk)
         return 0;
 
     return getBitFieldValue(sleepReg, TMAG5273_SLEEP_MODE_BITS, TMAG5273_SLEEP_MODE_LSB);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns the direction of threshold check. This bit is
 ///  ignored when THR_HYST > 001b.
 ///     0X0 = sets interrupt for field above the threshold
@@ -1252,6 +1276,7 @@ uint8_t TMAG5273::getMagDir()
     return getBitFieldValue(magDirectionReg, TMAG5273_THRESHOLD_INT_BITS, TMAG5273_THRESHOLD_INT_LSB);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns the axis for magnitude gain correction value
 ///  entered in MAG_GAIN_CONFIG register
 ///     0X0 = 1st channel is selected for gain adjustment
@@ -1267,6 +1292,7 @@ uint8_t TMAG5273::getMagnitudeChannelSelect()
     return getBitFieldValue(magGainReg, TMAG5273_GAIN_ADJUST_BITS, TMAG5273_GAIN_ADJUST_LSB);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief This function returns an 8-bit gain value determined by a
 ///  primary to adjust a Hall axis gain. The particular axis is selected
 ///  based off the settings of MAG_GAIN_CH and ANGLE_EN register bits.
@@ -1292,6 +1318,7 @@ uint8_t TMAG5273::getMagneticGain()
     return (uint8_t)(fMagGain * 256.f);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief This function will return an 8-bit, 2's complement offset value
 ///  determined by a primary to adjust the first axis offset value. The
 ///  range of possible offset valid entrees can be +/-128. The offset value
@@ -1323,6 +1350,7 @@ int8_t TMAG5273::getMagneticOffset1()
     return (int8_t)((magOffset1 * range) / 2048.f); // 2^11 = 2048
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief This function will return an 8-bit, 2's complement offset value
 ///  determined by a primary to adjust the first axis offset value. The
 ///  range of possible offset valid entrees can be +/-128. The offset value
@@ -1333,7 +1361,6 @@ int8_t TMAG5273::getMagneticOffset2()
 {
     // deal with int/uint conversion
     uint8_t tempRead = 0;
-
     if (_theI2CBus.readRegister(TMAG5273_REG_MAG_OFFSET_CONFIG_2, tempRead) != ksfTkErrOk)
         return 0;
 
@@ -1345,7 +1372,6 @@ int8_t TMAG5273::getMagneticOffset2()
         return -1; // invalid channel selection
 
     // See which XY axis range is currently set
-
     float range;
     if (channelSelect == 1)
         range = getXYAxisRange() == 0 ? 40.f : 80.f;
@@ -1367,10 +1393,8 @@ int8_t TMAG5273::getMagneticOffset2()
     // Use resolution equation in datasheet
     return (int8_t)((magOffset2 * range) / 2048.f); // 2^11 = 2048
 }
-// KDB ************************************************************************************************/
-// STOP STOP STOP
-// KDB ************************************************************************************************/
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns angle calculation, magnetic gain, and offset
 ///  corrections between two selected magnetic channels.
 ///     0X0 = No angle calculation, magnitude gain, and offset
@@ -1389,6 +1413,7 @@ uint8_t TMAG5273::getAngleEn()
     return getBitFieldValue(angleReg, TMAG5273_ANGLE_CALCULATION_BITS, TMAG5273_ANGLE_CALCULATION_LSB);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns the X and Y axes magnetic range from the
 ///  two following options:
 ///     0X0 = ±40mT, DEFAULT
@@ -1404,6 +1429,7 @@ uint8_t TMAG5273::getXYAxisRange()
     return getBitFieldValue(xyRangeReg, TMAG5273_XY_RANGE_BITS, TMAG5273_XY_RANGE_LSB);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns the Z axis magnetic range from the
 ///  two following options:
 ///     0X0 = ±40mT, DEFAULT
@@ -1419,6 +1445,7 @@ uint8_t TMAG5273::getZAxisRange()
     return getBitFieldValue(zRangeReg, TMAG5273_Z_RANGE_BITS, TMAG5273_Z_RANGE_LSB);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns an 8-bit, 2's complement X axis threshold code for
 ///  limit check. The range of possible threshold entrees can be +/-128.
 ///  The threshold value in mT is calculated as (40(1+X_Y_RANGE)/128)*X_THR_CONFIG.
@@ -1428,7 +1455,6 @@ uint8_t TMAG5273::getZAxisRange()
 /// @return Returns the X threshold code for limit check
 int8_t TMAG5273::getXThreshold()
 {
-
     uint8_t tempRead;
     if (_theI2CBus.readRegister(TMAG5273_REG_X_THR_CONFIG, tempRead) != ksfTkErrOk)
         return 0;
@@ -1437,6 +1463,7 @@ int8_t TMAG5273::getXThreshold()
     return *(int8_t *)&tempRead;
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns an 8-bit, 2's complement Y axis threshold code for
 ///  limit check. The range of possible threshold entrees can be +/-128.
 ///  The threshold value in mT is calculated as (40(1+X_Y_RANGE)/128)*Y_THR_CONFIG.
@@ -1446,7 +1473,6 @@ int8_t TMAG5273::getXThreshold()
 /// @return Returns the Y threshold code for limit check
 int8_t TMAG5273::getYThreshold()
 {
-
     uint8_t tempRead;
     if (_theI2CBus.readRegister(TMAG5273_REG_Y_THR_CONFIG, tempRead) != ksfTkErrOk)
         return 0;
@@ -1455,6 +1481,7 @@ int8_t TMAG5273::getYThreshold()
     return *(int8_t *)&tempRead;
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns an 8-bit, 2's complement Z axis threshold code for
 ///  limit check. The range of possible threshold entrees can be +/-128.
 ///  The threshold value in mT is calculated as (40(1+Z_RANGE)/128)*Z_THR_CONFIG.
@@ -1472,6 +1499,7 @@ int8_t TMAG5273::getZThreshold()
     return *(int8_t *)&tempRead;
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns the temperature threshold code entered by the user.
 ///  The valid temperature threshold values are -41C to 170C with the
 ///  threshold codes for -41C = 0x1A, and 170C = 0X34. Resolution is
@@ -1480,7 +1508,6 @@ int8_t TMAG5273::getZThreshold()
 /// @return Temperature threshold code entered by the user originally.
 uint8_t TMAG5273::getTemperatureThreshold()
 {
-
     uint8_t tempRead;
     if (_theI2CBus.readRegister(TMAG5273_REG_T_CONFIG, tempRead) != ksfTkErrOk)
         return 0;
@@ -1489,6 +1516,7 @@ uint8_t TMAG5273::getTemperatureThreshold()
     return tempRead >> 1;
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns the enable bit that determines the data
 ///  acquisition of the temperature channel.
 ///     0x0 = Temp Channel Disabled
@@ -1498,7 +1526,6 @@ uint8_t TMAG5273::getTemperatureThreshold()
 uint8_t TMAG5273::getTemperatureEN()
 {
     uint8_t tempENreg = 0;
-
     if (_theI2CBus.readRegister(TMAG5273_REG_T_CONFIG, tempENreg) != ksfTkErrOk)
         return 0;
 
@@ -1506,6 +1533,7 @@ uint8_t TMAG5273::getTemperatureEN()
     return getBitFieldValue(tempENreg, TMAG5273_TEMPERATURE_BITS, TMAG5273_TEMPERATURE_LSB);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns the enable interrupt response bit on conversion
 ///  complete.
 ///     0X0 = Interrupt is NOT asserted when the configured set of
@@ -1517,7 +1545,6 @@ uint8_t TMAG5273::getTemperatureEN()
 uint8_t TMAG5273::getInterruptResult()
 {
     uint8_t intRsltReg = 0;
-
     if (_theI2CBus.readRegister(TMAG5273_REG_INT_CONFIG_1, intRsltReg) != ksfTkErrOk)
         return 0;
 
@@ -1525,6 +1552,7 @@ uint8_t TMAG5273::getInterruptResult()
     return getBitFieldValue(intRsltReg, TMAG5273_INTERRUPT_RESULT_BITS, TMAG5273_INTERRUPT_RESULT_LSB);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns the bit that enables the interrupt response
 ///  on a predefined threshold cross.
 ///     0X0 = Interrupt is NOT asserted when a threshold is crossed
@@ -1534,7 +1562,6 @@ uint8_t TMAG5273::getInterruptResult()
 uint8_t TMAG5273::getThresholdEn()
 {
     uint8_t threshReg = 0;
-
     if (_theI2CBus.readRegister(TMAG5273_REG_INT_CONFIG_1, threshReg) != ksfTkErrOk)
         return 0;
 
@@ -1542,6 +1569,7 @@ uint8_t TMAG5273::getThresholdEn()
     return getBitFieldValue(threshReg, TMAG5273_INTERRUPT_THRESHOLD_BITS, TMAG5273_INTERRUPT_THRESHOLD_LSB);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns the !INT interrupt if it is latched or pulsed.
 ///     0X0 = !INT interrupt latched until clear by a primary
 ///           addressing the device
@@ -1551,7 +1579,6 @@ uint8_t TMAG5273::getThresholdEn()
 uint8_t TMAG5273::getIntPinState()
 {
     uint8_t intStateReg = 0;
-
     if (_theI2CBus.readRegister(TMAG5273_REG_INT_CONFIG_1, intStateReg) != ksfTkErrOk)
         return 0;
 
@@ -1559,6 +1586,7 @@ uint8_t TMAG5273::getIntPinState()
     return getBitFieldValue(intStateReg, TMAG5273_INTERRUPT_PIN_STATE_BITS, TMAG5273_INTERRUPT_PIN_STATE_LSB);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns the configuration for the interrupt mode select
 ///     0X0 = No interrupt
 ///     0X1 = Interrupt through !INT
@@ -1577,6 +1605,7 @@ uint8_t TMAG5273::getInterruptMode()
     return getBitFieldValue(intModeReg, TMAG5273_INTERRUPT_MODE_BITS, TMAG5273_INTERRUPT_MODE_LSB);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns the Mask !INT pin when !INT is connected to GND
 ///     0X0 = !INT pin is enabled
 ///     0X1 = !INT pin is disabled (for wake-up and trigger functions)
@@ -1592,6 +1621,7 @@ uint8_t TMAG5273::getMaskInt()
     return getBitFieldValue(maskIntReg, TMAG5273_INTERRUPT_MASK_BITS, TMAG5273_INTERRUPT_MASK_LSB);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns the rolling count of conversion data sets
 ///      TMAG5273_REG_CONV_STATUS - bit 7-5
 /// @return Rolling count of conversion data sets
@@ -1605,6 +1635,7 @@ uint8_t TMAG5273::getSetCount()
     return getBitFieldValue(convReg, TMAG5273_CONV_STATUS_SET_COUNT_BITS, TMAG5273_CONV_STATUS_SET_COUNT_LSB);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns if the device is powered up, or experienced power-
 ///  on-reset. Bit is cleared when the host writes back '1'.
 ///     0X0 = No POR
@@ -1621,6 +1652,7 @@ uint8_t TMAG5273::getPOR()
     return getBitFieldValue(convReg, TMAG5273_CONV_STATUS_POR_BITS, TMAG5273_CONV_STATUS_POR_LSB);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns if there was a detection of any internal
 ///  diagnostics fail which include VCC UV, internal memory CRC
 ///  error, !INT pin error and internal clock error. Ignore
@@ -1639,6 +1671,7 @@ uint8_t TMAG5273::getDiagStatus()
     return getBitFieldValue(convReg, TMAG5273_CONV_STATUS_DIAG_STATUS_BITS, TMAG5273_CONV_STATUS_DIAG_STATUS_LSB);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns if the conversion data buffer is ready
 ///  to be read.
 ///     0X0 = Conversion data not complete
@@ -1655,6 +1688,7 @@ uint8_t TMAG5273::getResultStatus()
     return getBitFieldValue(convReg, TMAG5273_CONV_STATUS_RESULT_STATUS_BITS, TMAG5273_CONV_STATUS_RESULT_STATUS_LSB);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns the I2C address of the device. There is a 7-bit
 ///  default factory address is loaded from OTP during first power
 ///  up. Change these bits to a new setting if a new I2C address is
@@ -1672,6 +1706,7 @@ uint8_t TMAG5273::getI2CAddress()
     return getBitFieldValue(addressReg, TMAG5273_I2C_ADDRESS_BITS, TMAG5273_I2C_ADDRESS_LSB);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns the device version indicator. The reset value of the
 ///  DEVICE_ID depends on the orderable part number
 ///     0X0 = Reserved
@@ -1690,6 +1725,7 @@ uint8_t TMAG5273::getDeviceID()
     return getBitFieldValue(deviceReg, TMAG5273_DEVICE_ID_BITS, TMAG5273_DEVICE_ID_LSB);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns the 8-Bit Manufacturer ID. There are two
 ///  registers, LSB and MSB.
 ///     MANUFACTURER_ID_LSB
@@ -1708,6 +1744,7 @@ uint16_t TMAG5273::getManufacturerID()
     return (databuffer[1] << 8) | (databuffer[0]);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief This function indicates the level that the device is
 ///  reading back from the !INT pin. The reset value of DEVICE_STATUS
 /// depends on the status of the !INT pin at power-up.
@@ -1717,7 +1754,6 @@ uint16_t TMAG5273::getManufacturerID()
 uint8_t TMAG5273::getInterruptPinStatus()
 {
     uint8_t deviceStatusReg = 0;
-
     if (_theI2CBus.readRegister(TMAG5273_REG_DEVICE_STATUS, deviceStatusReg) != ksfTkErrOk)
         return 0;
 
@@ -1725,6 +1761,7 @@ uint8_t TMAG5273::getInterruptPinStatus()
     return getBitFieldValue(deviceStatusReg, TMAG5273_DEVICE_STATUS_INTR_RB_BITS, TMAG5273_DEVICE_STATUS_INTR_RB_LSB);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief This function returns the device status register as its
 ///  raw hex value. This value can be taken and compared to the main
 ///  register as seen in the datasheet.
@@ -1742,6 +1779,7 @@ uint8_t TMAG5273::getDeviceStatus()
     return deviceStatusReg;
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief This function will return the error code, if there is any
 ///  at the time when the function is called.
 ///  If any of the Error pins are raised to 1 then there is an error.
@@ -1772,13 +1810,13 @@ int8_t TMAG5273::getError()
 /************************         MAGNETIC/TEMPERATURE FUNCTIONS         ************************/
 /************************************************************************************************/
 
+//------------------------------------------------------------------------------------------------
 /// @brief Reads back the T-Channel data conversion results,
 ///  combining the MSB and LSB registers.
 ///     T_MSB_RESULT and T_LSB_RESULT
 /// @return T-Channel data conversion results
 float TMAG5273::getTemp()
 {
-
     // Read the Temp data - returns the MSB and LSB in one read
     uint8_t dataBuffer[2];
     size_t nRead;
@@ -1793,7 +1831,7 @@ float TMAG5273::getTemp()
     return TMAG5273_TSENSE_T0 + ((float)(tData - TMAG5273_TADC_T0) / (TMAG5273_TADC_RES));
 }
 
-///------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------
 /// @brief Reads back the X-Channel data conversion results, the
 /// MSB 8-Bit and LSB 8-Bits. This reads from the following registers:
 ///     X_MSB_RESULT and X_LSB_RESULT
@@ -1816,6 +1854,7 @@ float TMAG5273::getXData()
     return calculateMagneticField(xData, range);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Reads back the Y-Channel data conversion results, the
 ///  MSB 8-Bits and LSB 8-Bits. This reads from the following registers:
 ///     Y_MSB_RESULT and Y_LSB_RESULT
@@ -1838,13 +1877,13 @@ float TMAG5273::getYData()
     return calculateMagneticField(yData, range);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Reads back the Z-Channel data conversion results, the
 ///  MSB 8-Bits and LSB 8-Bits. This reads from the following registers:
 ///     Z_MSB_RESULT and Z_LSB_RESULT
 /// @return Z-Channel data conversion results.
 float TMAG5273::getZData()
 {
-
     // Read the Z data - returns the MSB and LSB in one read
     uint8_t dataBuffer[2];
     size_t nRead;
@@ -1861,6 +1900,7 @@ float TMAG5273::getZData()
     return calculateMagneticField(zData, range);
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns the angle measurement result in degree. The data
 ///  displayed from 0 to 360 degree in 13 LSB bits after combining the
 ///  MSB and LSB bits. The 4 LSB bits allocated for fraction of an angle
@@ -1890,6 +1930,7 @@ float TMAG5273::getAngleResult()
     return integerValue + fractionValue;
 }
 
+//------------------------------------------------------------------------------------------------
 /// @brief Returns the resultant vector magnitude (during angle
 ///  measurement) result. This value should be constant during 360
 ///  degree measurements.
