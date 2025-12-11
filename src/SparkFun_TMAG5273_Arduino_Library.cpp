@@ -1801,9 +1801,7 @@ int8_t TMAG5273::getError()
                       TMAG5273_DEVICE_STATUS_INT_ERROR_BITS | TMAG5273_OSCILLATOR_ERROR_BITS)) == 0)
         return 0; // no errors
     else
-    {
         return -1; // error detected
-    }
 }
 
 /************************************************************************************************/
