@@ -6,7 +6,7 @@
  *
  * @author SparkFun Electronics
  * @date   2025
- * @copyright Copyright (c) 2023-2025 SparkFun Electronics Inc. This project is released under the MIT License.
+ * @copyright Copyright (c) 2023-2025 SparkFun Electronics Inc.
  *
  * SPDX-License-Identifier: MIT
  *
